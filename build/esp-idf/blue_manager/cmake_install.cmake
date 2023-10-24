@@ -1,4 +1,4 @@
-# Install script for directory: C:/Trabajo/SBC/Hito_3/Hito3_final/Blu_And_Wifi_Prov/sample_project/components/blue-provisioning
+# Install script for directory: C:/Trabajo/SBC/Hito_3/Hito3_final/Blu_And_Wifi_Prov/Wifi_Bluetooth_Provisioning/components/blue_manager
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

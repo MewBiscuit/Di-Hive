@@ -1,4 +1,4 @@
-/* * Data converted from C:/Trabajo/SBC/Hito_3/Hito3_final/Blu_And_Wifi_Prov/sample_project/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from C:/Trabajo/SBC/Hito_3/Hito3_final/Blu_And_Wifi_Prov/Wifi_Bluetooth_Provisioning/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 .section .rodata.embedded

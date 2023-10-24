@@ -3,3 +3,14 @@
 
 # Wifi & Bluetooth credentials provisioning with persistence
 
+The following project aims to provide a complete and easy to use Wi-Fi credentials provisioning tool through Wi-Fi and Bluetooth. The Wi-Fi credentials are stored in the NVS partition and are persistent across reboots. The Bluetooth provisioning is done through a simple file transfer and the Wifi version uses an HTTP web portal hosted on the ESP-32 as a softAP to enter the credentials. The project is based on the ESP-IDF framework and uses the ESP32 devboard.
+
+## How to use
+
+### Bluetooth provisioning
+
+The Bluetooth provisioning is done through a simple file transfer. The file is a JSON file containing the Wi-Fi credentials. The file is sent to the ESP32 through the Bluetooth SPP profile. The ESP32 will parse the JSON file and store the credentials in the NVS partition. The ESP32 will then connect to the Wi-Fi network using the credentials. The ESP32 will then start a TCP server on port 80 and will serve a simple web page. The web page will display the Wi-Fi credentials and will allow the user to change them. The ESP32 will then reboot and connect to the new Wi-Fi network.
+
+### Wi-Fi provisioning
+
+The Wi-Fi provisioning is done through a simple web portal hosted on the ESP-32 as a softAP. The ESP32 will start a TCP server on port 80 and will serve a simple web page. The web page will allow the user to enter the Wi-Fi credentials. The ESP32 will then parse the JSON file and store the credentials in the NVS partition. The ESP32 will then connect to the Wi-Fi network using the credentials. The ESP32 will then start a TCP server on port 80 and will serve a simple web page. The web page will display the Wi-Fi credentials and will allow the user to change them. The ESP32 will then reboot and connect to the new Wi-Fi network.

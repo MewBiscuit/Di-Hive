@@ -39,9 +39,9 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("C:/Trabajo/SBC/Hito_3/Hito3_final/Blu_And_Wifi_Prov/sample_project/build/esp-idf/mbedtls/mbedtls/include/cmake_install.cmake")
-  include("C:/Trabajo/SBC/Hito_3/Hito3_final/Blu_And_Wifi_Prov/sample_project/build/esp-idf/mbedtls/mbedtls/3rdparty/cmake_install.cmake")
-  include("C:/Trabajo/SBC/Hito_3/Hito3_final/Blu_And_Wifi_Prov/sample_project/build/esp-idf/mbedtls/mbedtls/library/cmake_install.cmake")
+  include("C:/Trabajo/SBC/Hito_3/Hito3_final/Blu_And_Wifi_Prov/Wifi_Bluetooth_Provisioning/build/esp-idf/mbedtls/mbedtls/include/cmake_install.cmake")
+  include("C:/Trabajo/SBC/Hito_3/Hito3_final/Blu_And_Wifi_Prov/Wifi_Bluetooth_Provisioning/build/esp-idf/mbedtls/mbedtls/3rdparty/cmake_install.cmake")
+  include("C:/Trabajo/SBC/Hito_3/Hito3_final/Blu_And_Wifi_Prov/Wifi_Bluetooth_Provisioning/build/esp-idf/mbedtls/mbedtls/library/cmake_install.cmake")
 
 endif()
 
