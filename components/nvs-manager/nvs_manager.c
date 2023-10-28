@@ -16,7 +16,7 @@ void init_nvs() {
     ESP_ERROR_CHECK( err );
 }
 
-void read_string_from_nvs(char *key, char *value) {
+esp_err_t read_string_from_nvs(char *key, char *value) {
     nvs_handle_t my_handle;
     esp_err_t err;
 
@@ -44,9 +44,10 @@ void read_string_from_nvs(char *key, char *value) {
 
     // Close
     nvs_close(my_handle);
+    return err;
 }
 
-void write_string_to_nvs(char* key, char* value) {
+esp_err_t write_string_to_nvs(char* key, char* value) {
     nvs_handle_t my_handle;
     esp_err_t err;
 
@@ -70,4 +71,5 @@ void write_string_to_nvs(char* key, char* value) {
 
     // Close
     nvs_close(my_handle);
+    return err;
 }

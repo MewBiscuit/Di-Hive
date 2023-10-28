@@ -10,7 +10,7 @@
     * 
     * @return void
 */
-void init_nvs();
+esp_err_t init_nvs();
 
 /**
     * @brief Read a string from NVS.
@@ -18,9 +18,9 @@ void init_nvs();
     * @param key The key to read from NVS.
     * @param value The value to read from NVS.
     * 
-    * @return void
+    * @return esp_err_t
 */
-void read_string_from_nvs(char *key, char *value);
+esp_err_t read_string_from_nvs(char *key, char *value);
 
 /**
     * @brief Write a string to NVS.
@@ -28,7 +28,7 @@ void read_string_from_nvs(char *key, char *value);
     * @param key The key to write to NVS.
     * @param value The value to write to NVS.
     * 
-    * @return void
+    * @return esp_err_t
 */
-void write_string_to_nvs(char *key, char *value);
+ write_string_to_nvs(char *key, char *value);
 #endif
