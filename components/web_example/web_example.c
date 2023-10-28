@@ -2,7 +2,7 @@
 #include "nvs_manager.h"
 #include <string.h>
 
-#include "web_provisioning.h"
+#include "web_example.h"
 
 /* Wi-Fi credentials */
 static char ssid[32] = {0};
@@ -10,10 +10,8 @@ static char password[64] = {0};
 
 static esp_err_t root_handler(httpd_req_t *req)
 {
-    const char *html = "<html><body><form method=\"POST\">"
-                        "<label>SSID: <input type=\"text\" name=\"ssid\"></label><br>"
-                        "<label>Password: <input type=\"password\" name=\"password\"></label><br>"
-                        "<input type=\"submit\" value=\"Connect\"></form></body></html>";
+    //Display a number value
+    const char *html = "";
     
     //Get credentials when POST request is received
     if (req->method == HTTP_POST)
@@ -66,7 +64,7 @@ static esp_err_t root_handler(httpd_req_t *req)
 /* HTTP server configuration */
 static httpd_config_t httpd_config = HTTPD_DEFAULT_CONFIG();
 
-static void start_httpd(void)
+static void start_web_server(void)
 {
     httpd_handle_t server;
     httpd_uri_t root_uri = {

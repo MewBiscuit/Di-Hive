@@ -4,6 +4,7 @@
 #include "web_provisioning.h"
 #include "nvs_manager.h"
 #include "blue_manager.h"
+#include "web_example.h"
 
 /* Wi-Fi credentials */
 char* ssid = "";
@@ -41,7 +42,7 @@ void app_main(void)
             if(result == 1)
             {
                 printf("Setting up Wi-Fi access point\n");
-                result = wifi_setup_ap(ssid, password);
+                wifi_setup_ap(ssid, password);
             }
 
             //Receive file over Bluetooth
@@ -54,7 +55,7 @@ void app_main(void)
     }
 
     //Start web server for data visualization
+    start_web_server();
     
-
 
 }
