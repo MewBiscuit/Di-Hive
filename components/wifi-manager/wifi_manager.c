@@ -18,7 +18,7 @@ esp_err_t wifi_init()
     return err;
 }
 
-esp_err_t wifi_setup_ap(const char* ssid, const char* password)
+esp_err_t setup_ap(const char* ssid, const char* password)
 {
     esp_err_t err = ESP_OK;
     
@@ -53,7 +53,7 @@ esp_err_t wifi_setup_ap(const char* ssid, const char* password)
     return err;
 }
 
-esp_err_t wifi_connect_ap(const char* ssid, const char* password)
+esp_err_t connect_ap(const char* ssid, const char* password)
 {
     esp_err_t err = ESP_OK;
     
