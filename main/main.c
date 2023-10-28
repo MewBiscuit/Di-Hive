@@ -3,7 +3,6 @@
 #include "wifi_manager.h"
 #include "web_provisioning.h"
 #include "nvs_manager.h"
-#include "blue_manager.h"
 #include "web_example.h"
 
 /* Wi-Fi credentials */
@@ -42,14 +41,7 @@ void app_main(void)
             if(result == 1)
             {
                 printf("Setting up Wi-Fi access point\n");
-                wifi_setup_ap(ssid, password);
-            }
-
-            //Receive file over Bluetooth
-            else if(result == 2)
-            {
-                printf("Receiving file over Bluetooth\n");
-                receive_file_over_bluetooth();
+                wifi_setup_ap("Eu Sonno ESP-32", "123abcdef");
             }
         }
     }

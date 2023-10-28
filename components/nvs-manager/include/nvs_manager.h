@@ -30,5 +30,5 @@ esp_err_t read_string_from_nvs(char *key, char *value);
     * 
     * @return esp_err_t
 */
- write_string_to_nvs(char *key, char *value);
+esp_err_t write_string_to_nvs(char *key, char *value);
 #endif

@@ -8,7 +8,7 @@
 static char ssid[32] = {0};
 static char password[64] = {0};
 
-static esp_err_t root_handler(httpd_req_t *req)
+esp_err_t root_handler(httpd_req_t *req)
 {
     //Display a number value
     const char *html = "";
@@ -64,7 +64,7 @@ static esp_err_t root_handler(httpd_req_t *req)
 /* HTTP server configuration */
 static httpd_config_t httpd_config = HTTPD_DEFAULT_CONFIG();
 
-static void start_web_server(void)
+void start_web_server(void)
 {
     httpd_handle_t server;
     httpd_uri_t root_uri = {

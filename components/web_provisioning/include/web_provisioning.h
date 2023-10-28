@@ -11,14 +11,14 @@
  * 
  * @return esp_err_t
  */
-static esp_err_t root_handler(httpd_req_t *req);
+esp_err_t root_handler(httpd_req_t *req);
 
 /**
  * @brief Start the HTTP server.
  * 
  * @return void
  */
-static void start_httpd(void);
+void start_httpd(void);
 
 
 #endif
