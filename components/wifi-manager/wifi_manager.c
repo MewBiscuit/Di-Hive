@@ -18,6 +18,41 @@ esp_err_t wifi_init()
     return err;
 }
 
+esp_err_t wifi_setup_ap(const char* ssid, const char* password)
+{
+    esp_err_t err = ESP_OK;
+    
+    // Set wifi mode to access point
+    err = esp_wifi_set_mode(WIFI_MODE_AP);
+    if(err != ESP_OK)
+    {
+        ESP_LOGI(TAG, "Error (%s) setting wifi mode!", esp_err_to_name(err));
+        return err;
+    }
+
+    // Set wifi configuration
+    wifi_config_t wifi_config = {
+        .ap = {
+            .ssid = ssid,
+            .ssid_len = strlen(ssid),
+            .password = password,
+            .max_connection = 10,
+            .authmode = WIFI_AUTH_WPA_WPA2_PSK
+        }
+    };
+    err = esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config);
+
+    // Start ap with specified configuration
+    err = esp_wifi_start();
+    if(err != ESP_OK)
+    {
+        ESP_LOGI(TAG, "Error (%s) starting wifi!", esp_err_to_name(err));
+        return err;
+    }
+
+    return err;
+}
+
 esp_err_t wifi_connect_ap(const char* ssid, const char* password)
 {
     esp_err_t err = ESP_OK;
@@ -54,41 +89,6 @@ esp_err_t wifi_connect_ap(const char* ssid, const char* password)
     {
         ESP_LOGI(TAG, "Error (%s) connecting to ap!", esp_err_to_name(err));
 
-    }
-
-    return err;
-}
-
-esp_err_t wifi_setup_ap(const char* ssid, const char* password)
-{
-    esp_err_t err = ESP_OK;
-    
-    // Set wifi mode to access point
-    err = esp_wifi_set_mode(WIFI_MODE_AP);
-    if(err != ESP_OK)
-    {
-        ESP_LOGI(TAG, "Error (%s) setting wifi mode!", esp_err_to_name(err));
-        return err;
-    }
-
-    // Set wifi configuration
-    wifi_config_t wifi_config = {
-        .ap = {
-            .ssid = ssid,
-            .ssid_len = strlen(ssid),
-            .password = password,
-            .max_connection = 10,
-            .authmode = WIFI_AUTH_WPA_WPA2_PSK
-        }
-    };
-    err = esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config);
-
-    // Start ap with specified configuration
-    err = esp_wifi_start();
-    if(err != ESP_OK)
-    {
-        ESP_LOGI(TAG, "Error (%s) starting wifi!", esp_err_to_name(err));
-        return err;
     }
 
     return err;

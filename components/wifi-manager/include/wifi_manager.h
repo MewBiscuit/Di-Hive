@@ -12,6 +12,15 @@
  */
 esp_err_t wifi_init(void);
 
+/**
+ * @brief Set up an access point with the given SSID and password.
+ *
+ * @param ssid The SSID of the access point to set up.
+ * @param password The password for the access point.
+ *
+ * @return esp_err_t
+ */
+esp_err_t setup_ap(const char* ssid, const char* password);
 
 /**
  * @brief Connect to an access point with the given SSID and password.
@@ -22,16 +31,6 @@ esp_err_t wifi_init(void);
  * @return esp_err_t
  */
 esp_err_t connect_ap(const char* ssid, const char* password);
-
-/**
- * @brief Set up an access point with the given SSID and password.
- *
- * @param ssid The SSID of the access point to set up.
- * @param password The password for the access point.
- *
- * @return esp_err_t
- */
-esp_err_t setup_ap(const char* ssid, const char* password);
 
 /**
  * @brief Disconnect from the current access point.
