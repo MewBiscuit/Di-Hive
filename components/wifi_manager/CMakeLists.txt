@@ -4,4 +4,5 @@ idf_component_register(SRCS "wifi_man_sta.c" "wifi_man_ap.c" "wifi_manager.c" "$
                        PRIV_REQUIRES driver
                        INCLUDE_DIRS "include"
                        REQUIRES
-                            esp_wifi)
+                            esp_wifi
+                            nvs_flash)
