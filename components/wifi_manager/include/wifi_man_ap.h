@@ -1,6 +1,8 @@
 #ifndef WIFI_MANAGER_AP_H
 #define WIFI_MANAGER_AP_H
 
+static esp_err_t wifi_init_ap();
+
 /**
  * @brief event_handler for the access point.
  *

@@ -5,13 +5,8 @@
 
 void app_main(void)
 {
-    // Let's test the wifi module
-    wifi_init();
-    char *ssid = "MyAP";
-    char *password = "MyPassword123";
-    int channel = 1;
-    int max_connections = 4;
-    setup_ap(ssid, password, &channel, &max_connections);
-
-    vTaskDelay(100000 / portTICK_PERIOD_MS);
+    while (1)
+    {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
 }

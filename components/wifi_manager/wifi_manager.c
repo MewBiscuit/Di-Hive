@@ -8,36 +8,13 @@
 
 static const char *TAG = "wifi_manager";
 
-esp_err_t wifi_init()
-{
-    esp_err_t err = ESP_OK;
-
-    err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        err = nvs_flash_init();
-    }
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    err = esp_wifi_init(&cfg);
-    if (err != ESP_OK)
-    {
-        ESP_LOGI(TAG, "Error (%s) initializing wifi!", esp_err_to_name(err));
-    }
-
-    ESP_ERROR_CHECK(err);
-
-    return err;
-}
-
 esp_err_t wifi_release()
 {
     esp_err_t err = ESP_OK;
-    err = esp_wifi_deinit();
-    if (err != ESP_OK)
-    {
-        ESP_LOGI(TAG, "Error (%s) releasing wifi!", esp_err_to_name(err));
-    }
+    ESP_ERROR_CHECK(esp_wifi_disconnect());
+    ESP_ERROR_CHECK(esp_wifi_stop());
+    ESP_ERROR_CHECK(esp_wifi_deinit());
+    ESP_ERROR_CHECK(esp_event_loop_delete_default());
+    ESP_ERROR_CHECK(esp_netif_deinit());
     return err;
 }
