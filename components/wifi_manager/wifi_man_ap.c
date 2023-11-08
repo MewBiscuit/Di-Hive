@@ -1,14 +1,4 @@
-#include <string.h>
-
-#include "esp_event.h"
-#include "esp_log.h"
-#include "esp_mac.h"
-#include "esp_wifi.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "lwip/err.h"
-#include "lwip/sys.h"
-#include "nvs_manager.h"
+#include "wifi_man_ap.h"
 
 static const char *TAG = "wifi_man_ap";
 

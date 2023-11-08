@@ -8,6 +8,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
+#include "nvs_manager.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"

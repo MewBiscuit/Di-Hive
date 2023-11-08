@@ -1,6 +1,18 @@
 #ifndef WIFI_MANAGER_AP_H
 #define WIFI_MANAGER_AP_H
 
+#include <string.h>
+
+#include "esp_event.h"
+#include "esp_log.h"
+#include "esp_mac.h"
+#include "esp_wifi.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "lwip/err.h"
+#include "lwip/sys.h"
+#include "nvs_manager.h"
+
 static esp_err_t wifi_init_ap();
 
 /**

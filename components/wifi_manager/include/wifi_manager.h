@@ -1,9 +1,10 @@
 #ifndef WIFI_MANAGER_H
 #define WIFI_MANAGER_H
 
+#include <stdint.h>
+
 #include "esp_check.h"
 #include "esp_wifi.h"
-#include <stdint.h>
 
 #include "wifi_man_ap.h"
 #include "wifi_man_sta.h"

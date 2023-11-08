@@ -1,11 +1,5 @@
 #include "wifi_manager.h"
 
-#include <stdint.h>
-
-#include "esp_check.h"
-#include "esp_wifi.h"
-#include "nvs_flash.h"
-
 static const char *TAG = "wifi_manager";
 
 esp_err_t wifi_release()
