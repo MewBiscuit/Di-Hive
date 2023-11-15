@@ -7,9 +7,7 @@
 #include <string.h>
 #include "esp_wifi.h"
 #include "esp_system.h"
-#include "nvs_flash.h"
 #include "esp_event.h"
-#include "esp_netif.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -30,13 +28,6 @@ static const char *TAG = "MQTT_MAN";
 static void log_error_if_nonzero(const char *message, int error_code);
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
-
-/**
- * @brief Initialize the mqtt manager. Required for all other functions.
- * 
- * @return void
-*/
-void mqtt_init();
 
 esp_mqtt_client_handle_t connect_mqtt_user_and_password(char *uri, int *port, char *username, char *password);
 

@@ -62,12 +62,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
-void mqtt_init(){
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-}
-
 esp_mqtt_client_handle_t connect_mqtt_user_and_password(char *uri, int *port, char *username, char *password){
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = uri,
@@ -101,7 +95,7 @@ esp_err_t post_text_data(char *key, char *value, char* target_path, esp_mqtt_cli
     cJSON *root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, *key, *value);
     char *post_data = cJSON_PrintUnformatted(root);
-    esp_mqtt_client_publish(client, target_path, post_data, 0, 1, 0);
+    esp_mqtt_client_enqueue(client, target_path, post_data, 0, 1, 0);
     free(post_data);
 
     return err;
@@ -113,7 +107,7 @@ esp_err_t post_int_data(char *key, int *value, char* target_path, esp_mqtt_clien
     cJSON *root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, *key, *value);
     char *post_data = cJSON_PrintUnformatted(root);
-    esp_mqtt_client_publish(client, target_path, post_data, 0, 1, 0);
+    esp_mqtt_client_enqueue(client, target_path, post_data, 0, 1, 0);
     free(post_data);
 
     return err;
@@ -125,7 +119,7 @@ esp_err_t post_double_data(char *key, double *value, char* target_path, esp_mqtt
     cJSON *root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, *key, *value);
     char *post_data = cJSON_PrintUnformatted(root);
-    esp_mqtt_client_publish(client, target_path, post_data, 0, 1, 0);
+    esp_mqtt_client_enqueue(client, target_path, post_data, 0, 1, 0);
     free(post_data);
 
     return err;
