@@ -1,16 +1,4 @@
-#include <esp_http_server.h>
-#include <esp_log.h>
-#include <nvs_flash.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/param.h>
-#include <unistd.h>
-
-#define HTTP_QUERY_KEY_MAX_LEN (64)
-
-static const char *TAG = "http_prov";
-
-#define HTTPD_401 "401 UNAUTHORIZED"
+#include "http_prov.h"
 
 esp_err_t post_handler(httpd_req_t *req) {
   char content[100];

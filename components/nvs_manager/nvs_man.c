@@ -1,4 +1,4 @@
-#include "nvs_manager.h"
+#include "nvs_man.h"
 
 esp_err_t init_nvs() {
     esp_err_t err = nvs_flash_init();

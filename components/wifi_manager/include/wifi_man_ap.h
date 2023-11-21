@@ -11,7 +11,7 @@
 #include "freertos/task.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
-#include "nvs_manager.h"
+#include "nvs_man.h"
 
 static const char *AP_TAG = "wifi_man_ap";
 
