@@ -5,6 +5,8 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
+static const char* TAG = "nvs_manager";
+
 /**
     * @brief Initialize the default NVS partition.
     * 

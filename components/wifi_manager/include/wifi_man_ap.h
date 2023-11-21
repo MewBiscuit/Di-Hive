@@ -13,6 +13,8 @@
 #include "lwip/sys.h"
 #include "nvs_manager.h"
 
+static const char *AP_TAG = "wifi_man_ap";
+
 static esp_err_t wifi_init_ap();
 
 /**

@@ -1,9 +1,6 @@
 #include "wifi_manager.h"
 
-static const char *TAG = "wifi_manager";
-
-esp_err_t wifi_release()
-{
+esp_err_t wifi_release() {
     esp_err_t err = ESP_OK;
     ESP_ERROR_CHECK(esp_wifi_disconnect());
     ESP_ERROR_CHECK(esp_wifi_stop());

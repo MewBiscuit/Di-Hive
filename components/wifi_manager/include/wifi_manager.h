@@ -9,6 +9,8 @@
 #include "wifi_man_ap.h"
 #include "wifi_man_sta.h"
 
+static const char *MAIN_TAG = "wifi_manager";
+
 /**
  * @brief Release the wifi module
  *

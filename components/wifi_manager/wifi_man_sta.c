@@ -1,17 +1,14 @@
 #include "wifi_man_sta.h"
 
-static EventGroupHandle_t s_wifi_event_group;
-
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 #define ESP_MAXIMUM_RETRY 10
 
-static const char *TAG = "wifi_man_sta";
+static const char *STA_TAG = "wifi_man_sta";
 
 static int s_retry_num = 0;
 
-static esp_err_t wifi_init_sta()
-{
+static esp_err_t wifi_init_sta() {
     esp_err_t err = ESP_OK;
 
     err = init_nvs();
@@ -24,23 +21,19 @@ static esp_err_t wifi_init_sta()
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 
     err = esp_wifi_init(&cfg);
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK) {
         ESP_LOGI(TAG, "Error (%s) initializing wifi!", esp_err_to_name(err));
     }
 
     return err;
 }
 
-static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
+static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
         esp_wifi_connect();
 
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
-    {
-        if (s_retry_num < ESP_MAXIMUM_RETRY)
-        {
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        if (s_retry_num < ESP_MAXIMUM_RETRY) {
             esp_wifi_connect();
             s_retry_num++;
             ESP_LOGI(TAG, "Retrying to connect to AP");
@@ -52,8 +45,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
         ESP_LOGI(TAG, "Connection to the AP fail");
     }
 
-    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
-    {
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
@@ -61,18 +53,15 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     }
 }
 
-esp_err_t connect_ap(const char *ssid, const char *password)
-{
+esp_err_t connect_ap(const char *ssid, const char *password) {
     wifi_init_sta();
     s_wifi_event_group = xEventGroupCreate();
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
 
-    ESP_ERROR_CHECK(
-        esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, &instance_any_id));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, &instance_any_id));
 
-    ESP_ERROR_CHECK(
-        esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &instance_got_ip));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &instance_got_ip));
 
     int len_ssid = strlen(ssid);
     int len_pass = strlen(password);
@@ -111,12 +100,10 @@ esp_err_t connect_ap(const char *ssid, const char *password)
     return ESP_OK;
 }
 
-esp_err_t disconnect_ap()
-{
+esp_err_t disconnect_ap() {
     esp_err_t err = ESP_OK;
     err = esp_wifi_disconnect();
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK) {
         ESP_LOGI(TAG, "Error (%s) disconnecting from ap!", esp_err_to_name(err));
     }
     return err;
