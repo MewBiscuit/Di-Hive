@@ -29,12 +29,51 @@ static void log_error_if_nonzero(const char *message, int error_code);
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
 
+/**
+ * @brief Connect to MQTT broker with username and password
+ * 
+ * @param uri URI of the MQTT broker
+ * @param port Port of the MQTT broker
+ * @param username Username of the MQTT broker
+ * @param password Password of the MQTT broker
+ * 
+ * @return esp_mqtt_client_handle_t Handle of the MQTT client
+*/
 esp_mqtt_client_handle_t connect_mqtt_user_and_password(char *uri, int *port, char *username, char *password);
-
+ 
+ /**
+  * @brief Connect to MQTT broker with token
+  * 
+  * @param uri URI of the MQTT broker
+  * @param port Port of the MQTT broker
+  * @param token Token of the MQTT broker
+  * 
+  * @return esp_mqtt_client_handle_t Handle of the MQTT client
+ */
 esp_mqtt_client_handle_t connect_mqtt_token(char *uri, int *port, char *token);
 
+/**
+ * @brief Post text data to MQTT broker
+ * 
+ * @param key Key of the data
+ * @param value Value of the data
+ * @param target_path Target path of the data
+ * @param client Handle of the MQTT client
+ * 
+ * @return esp_err_t Error code
+*/
 esp_err_t post_text_data(char *key, char *value, char *target_path, esp_mqtt_client_handle_t client);
 
+/**
+ * @brief Post numerical data to MQTT broker
+ * 
+ * @param key Key of the data
+ * @param value Value of the data
+ * @param target_path Target path of the data
+ * @param client Handle of the MQTT client
+ * 
+ * @return esp_err_t Error code
+*/
 esp_err_t post_numerical_data(char *key, double *value, char *target_path, esp_mqtt_client_handle_t client);
 
 #endif
