@@ -23,7 +23,7 @@
 
 #include "cJSON.h"
 
-static const char *TAG = "MQTT_MAN";
+static const char *MQTT_TAG = "MQTT_MAN";
 
 static void log_error_if_nonzero(const char *message, int error_code);
 
@@ -74,6 +74,6 @@ esp_err_t post_text_data(char *key, char *value, char *target_path, esp_mqtt_cli
  * 
  * @return esp_err_t Error code
 */
-esp_err_t post_numerical_data(char *key, double *value, char *target_path, esp_mqtt_client_handle_t client);
+esp_err_t post_numerical_data(char *key, int *value, char *target_path, esp_mqtt_client_handle_t client);
 
 #endif

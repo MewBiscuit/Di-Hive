@@ -13,7 +13,7 @@ static esp_err_t wifi_init_ap() {
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     err = esp_wifi_init(&cfg);
     if (err != ESP_OK) {
-        ESP_LOGI(TAG, "Error (%s) initializing wifi!", esp_err_to_name(err));
+        ESP_LOGI(AP_TAG, "Error (%s) initializing wifi!", esp_err_to_name(err));
     }
 
     return err;
@@ -22,12 +22,12 @@ static esp_err_t wifi_init_ap() {
 static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
     if (event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
-        ESP_LOGI(TAG, "station " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
+        ESP_LOGI(AP_TAG, "station " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
     }
 
     else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
         wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *)event_data;
-        ESP_LOGI(TAG, "station " MACSTR " leave, AID=%d", MAC2STR(event->mac), event->aid);
+        ESP_LOGI(AP_TAG, "station " MACSTR " leave, AID=%d", MAC2STR(event->mac), event->aid);
     }
 }
 
@@ -39,17 +39,17 @@ esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connection
     uint8_t len_pass = strlen(password);
 
     if (len_ssid == 0 || len_ssid > 31) {
-        ESP_LOGE(TAG, "SSID length invalid");
+        ESP_LOGE(AP_TAG, "SSID length invalid");
         return ESP_ERR_INVALID_ARG;
     }
 
     if (len_pass != 0 && (len_pass < 8 || len_pass > 63)) {
-        ESP_LOGE(TAG, "Password length must be 8..63");
+        ESP_LOGE(AP_TAG, "Password length must be 8..63");
         return ESP_ERR_INVALID_ARG;
     }
 
     if (*channel < 1 || *channel > 13) {
-        ESP_LOGE(TAG, "Channel must be 1..13");
+        ESP_LOGE(AP_TAG, "Channel must be 1..13");
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -82,7 +82,7 @@ esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connection
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s channel:%d", ssid, password, *channel);
+    ESP_LOGI(AP_TAG, "wifi_init_softap finished. SSID:%s password:%s channel:%d", ssid, password, *channel);
 
     return ESP_OK;
 }

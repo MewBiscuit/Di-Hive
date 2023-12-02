@@ -13,6 +13,8 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
+static const char *STA_TAG = "wifi_man_sta";
+
 static EventGroupHandle_t s_wifi_event_group;
 
 static esp_err_t wifi_init_sta();

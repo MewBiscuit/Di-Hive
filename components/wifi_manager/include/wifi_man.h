@@ -1,5 +1,5 @@
-#ifndef WIFI_MANAGER_H
-#define WIFI_MANAGER_H
+#ifndef WIFI_MAN_H
+#define WIFI_MAN_H
 
 #include <stdint.h>
 
@@ -9,7 +9,7 @@
 #include "wifi_man_ap.h"
 #include "wifi_man_sta.h"
 
-static const char *MAIN_TAG = "wifi_manager";
+static const char *WIFI_TAG = "wifi_manager";
 
 /**
  * @brief Release the wifi module

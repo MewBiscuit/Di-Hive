@@ -1,4 +1,4 @@
-#include "wifi_manager.h"
+#include "wifi_man.h"
 
 esp_err_t wifi_release() {
     esp_err_t err = ESP_OK;

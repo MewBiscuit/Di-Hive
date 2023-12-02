@@ -19,7 +19,7 @@ esp_err_t read_string_from_nvs(char *key, char *value) {
     // Open
     err = nvs_open("storage", NVS_READWRITE, &my_handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
+        ESP_LOGE(NVS_TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
     } 
 
     else {
@@ -27,19 +27,19 @@ esp_err_t read_string_from_nvs(char *key, char *value) {
         size_t required_size = 0;  // value will default to NULL if not set yet in NVS
         err = nvs_get_str(my_handle, key, NULL, &required_size);
         if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
-            ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
+            ESP_LOGE(NVS_TAG, "Error (%s) reading!", esp_err_to_name(err));
         } 
 
         else {
             if (required_size > 0) {
                 err = nvs_get_str(my_handle, key, value, &required_size);
                 if (err != ESP_OK) {
-                    ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
+                    ESP_LOGE(NVS_TAG, "Error (%s) reading!", esp_err_to_name(err));
                 }
             } 
             
             else {
-                ESP_LOGI(TAG, "The value is not initialized yet!");
+                ESP_LOGI(NVS_TAG, "The value is not initialized yet!");
             }
         }
     }
@@ -55,20 +55,20 @@ esp_err_t write_string_to_nvs(char* key, char* value) {
     // Open
     err = nvs_open("storage", NVS_READWRITE, &my_handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
+        ESP_LOGE(NVS_TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
     } 
     
     else {
         // Write
         err = nvs_set_str(my_handle, key, value);
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Error (%s) writing!", esp_err_to_name(err));
+            ESP_LOGE(NVS_TAG, "Error (%s) writing!", esp_err_to_name(err));
         }
 
         // Commit
         err = nvs_commit(my_handle);
         if (err != ESP_OK) {
-            ESP_LOGE(TAG, "Error (%s) committing!", esp_err_to_name(err));
+            ESP_LOGE(NVS_TAG, "Error (%s) committing!", esp_err_to_name(err));
         }
     }
     // Close
