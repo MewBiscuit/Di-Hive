@@ -40,7 +40,7 @@ Manages WiFi functionalities, including modes and configurations. It is divided 
   Manages the ESP in Station mode, enabling it to connect to existing WiFi networks.
 
 ## Installation Instructions
-Copy and paste the component files from this repository into your project's `components` folder.
+Copy and paste the component folder from this repository into your project's `components` folder.
 
 ## Usage Instructions
 Include the header files of the desired component and call the provided functions as per your project's requirements.
