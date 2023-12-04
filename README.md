@@ -33,7 +33,7 @@ To use a component:
 
 ## Features
 - **Simplified ESP-IDF Usage**: This repository aims to significantly reduce the amount of work required by programmers by handling much of the ESP-IDF's complexity.
-- **Modular Components**: Each component is designed to be independently integrated into your projects, providing specific functionalities as needed. Some of these components might depend on one another, so make sure you check the `REQUIRES` field of the component you wish to utilize
+- **Modular Components**: Each component is designed to be independently integrated into your projects, providing specific functionalities as needed. Some of these components might depend on one another, so make sure you check the `REQUIRES` field of the CMAKE file for the component you wish to utilize
 
 ## Dependencies
 There are no external dependencies for this repository, apart from the ESP-IDF framework itself.
