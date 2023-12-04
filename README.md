@@ -5,43 +5,52 @@
 
 ## Table of Contents
 1. [Overview](#overview)
-2. [Current Components](#current-components)
+2. [Components](#components)
+   - [ADC Manager](#adc-manager)
+   - [MQTT Manager](#mqtt-manager)
+   - [NVS Manager](#nvs-manager)
+   - [Wifi Manager](#wifi-manager)
+     - [Access Point Mode](#access-point-mode)
+     - [Station Mode](#station-mode)
 3. [Installation Instructions](#installation-instructions)
 4. [Usage Instructions](#usage-instructions)
-5. [Features](#features)
-6. [Dependencies](#dependencies)
-7. [License](#license)
-8. [Contribution](#contribution)
+5. [Dependencies](#dependencies)
+6. [License](#license)
+7. [Contribution](#contribution)
 
 ## Overview
-The ESP-IDF-Interface repository is dedicated to developing components that streamline and offer various functionalities for ESP-IDF projects. This repository aims to reduce the overhead associated with ESP-IDF, making it more accessible and easier to use for developers.
+The ESP-IDF-Interface repository is dedicated to developing components that simplify and provide various functionalities for ESP-IDF projects, aiming to reduce the ESP-IDF's overhead.
 
-### Current Components
-- **Wifi Manager**: Enables ESP to function as a station or access point.
-- **MQTT Manager**: Simplifies the use of MQTT protocols.
-- **ADC Manager**: Assists in analog-to-digital conversion management.
-- **NVS Manager**: Aids in non-volatile storage handling.
+## Components
+
+### ADC Manager
+Handles analog-to-digital conversion. Functions include initialization (`adc_manager_init`) and configuration of ADC channels.
+
+### MQTT Manager
+Facilitates MQTT protocol usage. It includes essential MQTT functionalities encapsulated for easier integration.
+
+### NVS Manager
+Manages non-volatile storage (NVS). Provides functions for initializing NVS (`init_nvs`) and reading strings from NVS (`read_string_from_nvs`).
+
+### Wifi Manager
+Manages WiFi functionalities, including modes and configurations. It is divided into two sub-components:
+- #### Access Point Mode
+  Configures and manages the ESP as a WiFi access point.
+- #### Station Mode
+  Manages the ESP in Station mode, enabling it to connect to existing WiFi networks.
 
 ## Installation Instructions
-1. Locate the component you need within this repository.
-2. Copy and paste the folder containing the chosen component into your project's `components` folder.
+Copy and paste the component files from this repository into your project's `components` folder.
 
 ## Usage Instructions
-To use a component:
-1. Include the header files of the desired component in your project.
-2. Call the functions implemented in the component as per your project's needs.
-
-## Features
-- **Simplified ESP-IDF Usage**: This repository aims to significantly reduce the amount of work required by programmers by handling much of the ESP-IDF's complexity.
-- **Modular Components**: Each component is designed to be independently integrated into your projects, providing specific functionalities as needed. Some of these components might depend on one another, so make sure you check the `REQUIRES` field of the CMAKE file for the component you wish to utilize
+Include the header files of the desired component and call the provided functions as per your project's requirements.
 
 ## Dependencies
-There are no external dependencies for this repository, apart from the ESP-IDF framework itself.
+No external dependencies, apart from the ESP-IDF framework.
 
 ## License
-The licensing terms for this repository are currently undetermined. Please check back later for updates regarding the license.
+The licensing terms for this repository are currently undetermined.
 
 ## Contribution
-This project is currently closed for contributions. However, any feedback or suggestions are always welcome. Please feel free to reach out for discussions or queries related to this project.
-
+This project is currently closed for contributions. Feedback and suggestions are welcome.
 
