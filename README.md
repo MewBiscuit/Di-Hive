@@ -24,7 +24,7 @@ The ESP-IDF-Interface repository is dedicated to developing components that stre
 
 ## Installation Instructions
 1. Locate the component you need within this repository.
-2. Copy and paste the files from the chosen component into your project's `components` folder.
+2. Copy and paste the folder containing the chosen component into your project's `components` folder.
 
 ## Usage Instructions
 To use a component:
@@ -33,7 +33,7 @@ To use a component:
 
 ## Features
 - **Simplified ESP-IDF Usage**: This repository aims to significantly reduce the amount of work required by programmers by handling much of the ESP-IDF's complexity.
-- **Modular Components**: Each component is designed to be independently integrated into your projects, providing specific functionalities as needed.
+- **Modular Components**: Each component is designed to be independently integrated into your projects, providing specific functionalities as needed. Some of these components might depend on one another, so make sure you check the REQUIRES field of the component you wish to utilize
 
 ## Dependencies
 There are no external dependencies for this repository, apart from the ESP-IDF framework itself.
