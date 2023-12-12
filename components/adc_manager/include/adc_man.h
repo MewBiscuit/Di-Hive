@@ -3,6 +3,7 @@
 
 #include "driver/gpio.h"
 #include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_continuous.h"
 #include "esp_err.h"
 #include "esp_log.h"
 
@@ -15,7 +16,7 @@ static const char *ADC_TAG = "adc_manager";
  * 
  * @return adc_oneshot_unit_handle_t Handle to the adc module
 */
-adc_oneshot_unit_handle_t adc_manager_init(adc_unit_t adc_module);
+adc_oneshot_unit_handle_t adc_manager_init_oneshot(adc_unit_t adc_module);
 
 /**
  * @brief Configure the adc channel
@@ -27,7 +28,7 @@ adc_oneshot_unit_handle_t adc_manager_init(adc_unit_t adc_module);
  * 
  * @return esp_err_t
 */
-esp_err_t adc_manager_cfg_channel(adc_oneshot_unit_handle_t adc_module, adc_channel_t channel, adc_bitwidth_t bitwidth, adc_atten_t atten);
+esp_err_t adc_manager_cfg_channel_oneshot(adc_oneshot_unit_handle_t adc_module, adc_channel_t channel, adc_bitwidth_t bitwidth, adc_atten_t atten);
 
 
 /**
@@ -48,6 +49,6 @@ esp_err_t adc_manager_read_oneshot(adc_oneshot_unit_handle_t adc_module, adc_cha
  * 
  * @return esp_err_t
 */
-esp_err_t adc_manager_deinit(adc_oneshot_unit_handle_t adc_module);
+esp_err_t adc_manager_deinit_oneshot(adc_oneshot_unit_handle_t adc_module);
 
 #endif

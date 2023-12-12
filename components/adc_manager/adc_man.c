@@ -1,6 +1,6 @@
  #include "adc_man.h"
 
-adc_oneshot_unit_handle_t adc_manager_init(adc_unit_t adc_module) {
+adc_oneshot_unit_handle_t adc_manager_init_oneshot(adc_unit_t adc_module) {
     //Setup ADC
     adc_oneshot_unit_handle_t adc_handle;
 
@@ -14,7 +14,7 @@ adc_oneshot_unit_handle_t adc_manager_init(adc_unit_t adc_module) {
     return adc_handle;
 }
 
-esp_err_t adc_manager_cfg_channel(adc_oneshot_unit_handle_t adc_module, adc_channel_t channel, adc_bitwidth_t bitwidth, adc_atten_t atten) {
+esp_err_t adc_manager_cfg_channel_oneshot(adc_oneshot_unit_handle_t adc_module, adc_channel_t channel, adc_bitwidth_t bitwidth, adc_atten_t atten) {
     //Configure ADC
     esp_err_t r = ESP_OK;
     adc_oneshot_chan_cfg_t config = {
@@ -36,7 +36,7 @@ esp_err_t adc_manager_read_oneshot(adc_oneshot_unit_handle_t adc_module, adc_cha
     return r;
 }
 
-esp_err_t adc_manager_deinit(adc_oneshot_unit_handle_t adc_module) {
+esp_err_t adc_manager_deinit_oneshot(adc_oneshot_unit_handle_t adc_module) {
     //Deinitialize ADC
     esp_err_t r = adc_oneshot_del_unit(adc_module);
     if(r != ESP_OK) {
