@@ -14,6 +14,7 @@
 extern "C" {
     #include "nvs_man.h"
     #include "wifi_man.h"
+    #include "mqtt_man.h"
     #include "adc_man.h"
     #include "sensors_man.h"
 }
@@ -118,6 +119,8 @@ extern "C" void app_main(void) {
     //TODO: Check for OTA updates
     //TODO: Connect to Thingsboard
     //TODO: Setup partition table for OTA updates
+
+    //TODO: Configure MQTT manager in order to save space on esp32 flash
 
     //Execution loop
     while(1) {
