@@ -69,7 +69,7 @@ extern "C" void app_main(void) {
 
     //Wifi setup
     err = connect_ap(ssid, password);
-    if (err != ESP_OK) {
+    if (err != ESP_OK) { //TODO: Change errors to different types based on origin, otherwise we mix conditions between loops
         ESP_LOGI(TAG, "Error (%s) connecting to AP!", esp_err_to_name(err));
 
         //Turn on flag_local_data
@@ -84,7 +84,7 @@ extern "C" void app_main(void) {
             return void();
         }
 
-        //Start provisioning server
+        //TODO: Start provisioning server with callback
 
         while(!provisioned){
             //Read sensor data
@@ -105,30 +105,43 @@ extern "C" void app_main(void) {
                 ESP_LOGE(TAG, "Failed to read ADC channel 4! Err: %s", esp_err_to_name(err));
             }
 
-            //Save data to NVS
+            //TODO: Save data to NVS with timestamp in order to dump the data to dashboard when connection is re-established
+            
 
         }
-
         wifi_release();
         write_string_to_nvs("ssid", ssid);
         write_string_to_nvs("password", password);
         err = connect_ap(ssid, password);
     }
 
-
-    //Check for OTA updates
+    //TODO: Check for OTA updates
     //TODO: Connect to Thingsboard
     //TODO: Setup partition table for OTA updates
 
-
-
-
-
     //Execution loop
     while(1) {
-        //Read data
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        // Every 30 seconds we read all of the sensors and dump the data
+        vTaskDelay(30000 / portTICK_PERIOD_MS); //TODO: Turn into deep sleep instead of active wait
         adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_6, &noise);
-        printf("Noise: %ddB\n", noise);
+        adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_4, &weight);
+        err = PmodHYGRO_read(&temp_in, &hum_in);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to read PmodHYGRO! Err: %s", esp_err_to_name(err));
+        }
+        err = PmodTMP3_read(&temp_out);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to read PmodTMP3! Err: %s", esp_err_to_name(err));
+        }
+        err = adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_6, &noise);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to read ADC channel 6! Err: %s", esp_err_to_name(err));
+        }
+        err = adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_4, &weight);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to read ADC channel 4! Err: %s", esp_err_to_name(err));
+        }
+        //TODO: send data to Thingsboard
+        //TODO: If disconnection is detected, we reset the esp32
     }
 }
