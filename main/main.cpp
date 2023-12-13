@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <esp_ota_ops.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -8,12 +9,8 @@
 #include "esp_log.h"
 #include "esp_sleep.h"
 
-#define THINGSBOARD_USE_ESP_PARTITION 1
-
-#include <ThingsBoard.h>
-#include <Espressif_Updater.h>
 #include <Espressif_MQTT_Client.h>
-
+#include <ThingsBoard.h>
 
 extern "C" {
     #include "nvs_man.h"
@@ -39,7 +36,6 @@ constexpr uint32_t SERIAL_DEBUG_BAUD = 115200U;
 
 Espressif_MQTT_Client mqtt_client;
 ThingsBoard tb(mqtt_client, MAX_MESSAGE_SIZE);
-Espressif_Updater updater;
 
 bool currentFWSent = false;
 bool updateRequestSent = false;
@@ -58,13 +54,12 @@ void progressCallback(const size_t& currentChunk, const size_t& totalChuncks) {
 }
 
 void OTA_process(){
-    //OTA Update check process
     if (!currentFWSent) {
         currentFWSent = tb.Firmware_Send_Info(CURRENT_FIRMWARE_TITLE, CURRENT_FIRMWARE_VERSION) && tb.Firmware_Send_State(FW_STATE_UPDATED);
     }
 
     if (!updateRequestSent) {
-        const OTA_Update_Callback callback(&progressCallback, &updatedCallback, CURRENT_FIRMWARE_TITLE, CURRENT_FIRMWARE_VERSION, &updater, FIRMWARE_FAILURE_RETRIES, FIRMWARE_PACKET_SIZE);
+        const OTA_Update_Callback callback(&progressCallback, &updatedCallback, CURRENT_FIRMWARE_TITLE, CURRENT_FIRMWARE_VERSION, FIRMWARE_FAILURE_RETRIES, FIRMWARE_PACKET_SIZE);
         updateRequestSent = tb.Start_Firmware_Update(callback);
     }
 
@@ -95,6 +90,9 @@ extern "C" void app_main(void) {
 
 
     init_nvs();
+
+    //Set deep sleep to 30 secs
+    esp_sleep_enable_timer_wakeup(27000000);
 
     //Initialize ADC
     adc_oneshot_unit_handle_t adc_handle = adc_manager_init_oneshot(ADC_UNIT_1);
@@ -161,6 +159,8 @@ extern "C" void app_main(void) {
             }
             //TODO: Save data to SD card
             
+            //Can't send to sleep to keep AP running
+            vTaskDelay(30000 / portTICK_PERIOD_MS);
         }
         wifi_release();
         write_string_to_nvs("ssid", ssid);
@@ -176,9 +176,6 @@ extern "C" void app_main(void) {
     //TODO: If local data flag is set, dump saved data to Thingsboard with timestamp and reset flag
 
     OTA_process();
-
-    //Set deep sleep to 30 secs
-    esp_sleep_enable_timer_wakeup(27000000);
 
     //Execution loop
     for(;;) {
