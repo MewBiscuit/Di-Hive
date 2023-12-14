@@ -7,9 +7,10 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
-#include "sdmmc_cmd.h"
-#include "driver/sdmmc_host.h"
-#include "esp_vfs_fat.h"
+
+#include "FS.h"
+#include "SD.h"
+#include "SPI.h"
 
 #include <Espressif_MQTT_Client.h>
 #include <ThingsBoard.h>
@@ -23,15 +24,13 @@ extern "C" {
 
 #define TAG "MAIN"
 #define ENCRYPTED false
-#define MAX_CHAR_SIZE    128
+#define MAX_CHAR_SIZE 256
 #define MOUNT_POINT "/sdcard"
 
 constexpr char CURRENT_FIRMWARE_TITLE[] = "Di-Hive";
 constexpr char CURRENT_FIRMWARE_VERSION[] = "0.1.0";
-
 constexpr uint8_t FIRMWARE_FAILURE_RETRIES = 12U;
 constexpr uint16_t FIRMWARE_PACKET_SIZE = 4096U;
-
 constexpr char TOKEN[] = "g4gzei5ivlqn32g824lr";
 constexpr char THINGSBOARD_SERVER[] = "demo.thingsboard.io";
 constexpr uint16_t THINGSBOARD_PORT = 1883U;
@@ -41,41 +40,71 @@ constexpr uint32_t SERIAL_DEBUG_BAUD = 115200U;
 Espressif_MQTT_Client mqtt_client;
 ThingsBoard tb(mqtt_client, MAX_FW_SIZE);
 
-static esp_err_t write_file(const char *path, char *data) {
-    ESP_LOGI(TAG, "Opening file %s", path);
-    FILE *f = fopen(path, "a+");
-    if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for writing");
+esp_err_t appendFile(fs::FS &fs, const char * path, const char * message) {
+    Serial.printf("Appending to file: %s\n", path);
+
+    File file = fs.open(path, FILE_APPEND);
+    if(!file){
+        Serial.println("Failed to open file for appending");
         return ESP_FAIL;
     }
-    fprintf(f, data);
-    fclose(f);
-    ESP_LOGI(TAG, "Data appended");
+    if(file.print(message)){
+        Serial.println("Message appended");
+    } else {
+        Serial.println("Append failed");
+    }
+    file.close();
 
     return ESP_OK;
 }
 
-static esp_err_t dump_data_to_tb(const char *path) {
-    ESP_LOGI(TAG, "Reading file %s", path);
-    FILE *f = fopen(path, "r");
-    if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for reading");
+esp_err_t writeFile(fs::FS &fs, const char * path, const char * message) {
+    Serial.printf("Writing file: %s\n", path);
+
+    File file = fs.open(path, FILE_WRITE);
+    if(!file){
+        Serial.println("Failed to open file for writing");
         return ESP_FAIL;
     }
-    char line[MAX_CHAR_SIZE];
-    fgets(line, sizeof(line), f);
-    while (!feof(f)) {
-        ESP_LOGI(TAG, "Read from file: '%s'", line);
-        tb.sendTelemetryJson(line);
-        tb.loop();
-        fgets(line, sizeof(line), f);
+    if(file.print(message)){
+        Serial.println("File written");
+    } else {
+        Serial.println("Write failed");
+        return ESP_FAIL;
     }
-    fclose(f);
+    file.close();
 
-    // strip newline
-    char *pos = strchr(line, '\n');
-    if (pos) {
-        *pos = '\0';
+    return ESP_OK;
+}
+
+esp_err_t readFile(fs::FS &fs, const char * path) {
+    Serial.printf("Reading file: %s\n", path);
+
+    File file = fs.open(path);
+    if(!file){
+        Serial.println("Failed to open file for reading");
+        return ESP_FAIL;
+    }
+
+    Serial.print("Read from file: ");
+    char buffer[255]; // Declare the buffer variable
+    while(file.available()) { // Read one line at a time
+        file.readStringUntil('\n').toCharArray(buffer, sizeof(buffer));
+        // Process the read data here
+        tb.sendTelemetryJson(buffer);
+    }
+    file.close();
+
+    return ESP_OK;
+}
+
+esp_err_t deleteFile(fs::FS &fs, const char * path) {
+    Serial.printf("Deleting file: %s\n", path);
+    if(fs.remove(path)){
+        Serial.println("File deleted");
+    } else {
+        Serial.println("Delete failed");
+        return ESP_FAIL;
     }
 
     return ESP_OK;
@@ -99,52 +128,41 @@ extern "C" void app_main(void) {
     char* password = "dummy_data";
     char* ssid_prov = "Di-Core_Provisioning";
     char* password_prov = "provisioning1234!";
+    char data[255];
     esp_err_t wifi_err = ESP_OK;
+    esp_err_t nvs_err = ESP_OK;
     esp_err_t adc_err = ESP_OK;
     esp_err_t i2c_err = ESP_OK;
     esp_err_t sd_err = ESP_OK;
     time_t stamp;
+    uint8_t cardType = NULL;
 
-    //SD Stuff
-    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-        #ifdef CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED
-                .format_if_mount_failed = true,
-        #else
-                .format_if_mount_failed = false,
-        #endif // EXAMPLE_FORMAT_IF_MOUNT_FAILED
-                .max_files = 5,
-                .allocation_unit_size = 16 * 1024
-    };
-    sdmmc_card_t *card;
-    const char mount_point[] = MOUNT_POINT;
+    nvs_err = init_nvs();
+    if (nvs_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize NVS! Err: %s", esp_err_to_name(nvs_err));
+        return void();
+    }
 
-    
-    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+    //Setup SD card
+    SPI.begin(GPIO_NUM_18, GPIO_NUM_19, GPIO_NUM_23, GPIO_NUM_5);
+    SPI.setDataMode(SPI_MODE0);
+    SD.begin(GPIO_NUM_5);
+    if(!SD.begin()){
+        ESP_LOGI(TAG, "Card Mount Failed");
+        sd_err = ESP_FAIL;
+    }
 
-    #ifdef CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_4
-        slot_config.width = 4;
-    #else
-        slot_config.width = 1;
-    #endif
+    if(sd_err != ESP_FAIL){
+        ESP_LOGI(TAG, "SD card initialized");
+        cardType = SD.cardType();
+    }
 
-    #ifdef CONFIG_SOC_SDMMC_USE_GPIO_MATRIX
-        slot_config.clk = CONFIG_EXAMPLE_PIN_CLK;
-        slot_config.cmd = CONFIG_EXAMPLE_PIN_CMD;
-        slot_config.d0 = CONFIG_EXAMPLE_PIN_D0;
-    #ifdef CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_4
-        slot_config.d1 = CONFIG_EXAMPLE_PIN_D1;
-        slot_config.d2 = CONFIG_EXAMPLE_PIN_D2;
-        slot_config.d3 = CONFIG_EXAMPLE_PIN_D3;
-    #endif  // CONFIG_EXAMPLE_SDMMC_BUS_WIDTH_4
-    #endif  // CONFIG_SOC_SDMMC_USE_GPIO_MATRIX
+    if(cardType == CARD_NONE){
+        ESP_LOGI(TAG, "No SD card attached");
+        sd_err = ESP_FAIL;
+    }
 
-    slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
-    const char *file_data = MOUNT_POINT"/local_data.txt";
-    char data[MAX_CHAR_SIZE];
-
-
-    init_nvs();
+    writeFile(SD, "/log.txt", "");
 
     //Set deep sleep to 30 secs
     esp_sleep_enable_timer_wakeup(27000000);
@@ -161,6 +179,7 @@ extern "C" void app_main(void) {
     }
 
     //Initialize other sensors
+    i2c_err = i2c_init();
     i2c_err = init_PmodHYGRO();
     if (i2c_err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize PmodHYGRO! Err: %s", esp_err_to_name(i2c_err));
@@ -171,10 +190,23 @@ extern "C" void app_main(void) {
     }
 
     //Read credentials from NVS
-    read_string_from_nvs("ssid", ssid);
-    read_string_from_nvs("password", password);
-    read_string_from_nvs("token", token);
-    read_string_from_nvs("flag_local_data", &flag_local_data);
+    nvs_err = read_string_from_nvs("ssid", ssid);
+    if(nvs_err != ESP_OK) {
+        ESP_LOGI(TAG, "No SSID found in NVS");
+    }
+    nvs_err = read_string_from_nvs("password", password);
+    if(nvs_err != ESP_OK) {
+        ESP_LOGI(TAG, "No password found in NVS");
+    }
+    nvs_err = read_string_from_nvs("token", token);
+    if(nvs_err != ESP_OK) {
+        //TODO: Ask for token
+        ESP_LOGI(TAG, "No password found in NVS");
+    }
+    nvs_err = read_string_from_nvs("flag_local_data", &flag_local_data);
+    if(nvs_err != ESP_OK) {
+        write_string_to_nvs("flag_local_data", "0");
+    }
 
     //Wifi setup
     wifi_err = connect_ap(ssid, password);
@@ -193,24 +225,8 @@ extern "C" void app_main(void) {
             return void();
         }
 
-        //TODO: Start provisioning server with callback
-
-        //Setup SD card
-        ESP_LOGI(TAG, "Initializing SD card");
-        sd_err = esp_vfs_fat_sdmmc_mount(mount_point, &host, &slot_config, &mount_config, &card);
-
-        if (sd_err != ESP_OK) {
-            if (sd_err == ESP_FAIL) {
-                ESP_LOGE(TAG, "Failed to mount filesystem. If you want the card to be formatted, set the EXAMPLE_FORMAT_IF_MOUNT_FAILED menuconfig option.");
-            } 
-            
-            else {
-                ESP_LOGE(TAG, "Failed to initialize the card (%s). Make sure SD card lines have pull-up resistors in place.", esp_err_to_name(sd_err));
-            }
-            return;
-        }
-        ESP_LOGI(TAG, "Filesystem mounted");
-
+        //TODO: Start provisioning server with callback for prvisioned variable
+        
         for(;!provisioned;) {
             //Read sensor data
             i2c_err = PmodHYGRO_read(&temp_in, &hum_in);
@@ -233,10 +249,8 @@ extern "C" void app_main(void) {
             time(&stamp);
             snprintf(data, MAX_CHAR_SIZE, "{'ts':%lld, 'values':{'%s':%d, '%s':%d, '%s':%d, '%s':%d, '%s':%d}}", stamp, "temperature_out", temp_out,
             "temperature_in", temp_in, "humidity_in", hum_in, "noise", noise, "weight", weight);
-            sd_err = write_file(file_data, data);
-            if (sd_err != ESP_OK) {
-                ESP_LOGI(TAG, "Failed to write file : %s", file_data);
-            }
+            appendFile(SD, "/log.txt", data);
+
             //Can't send to sleep to keep AP running
             vTaskDelay(30000 / portTICK_PERIOD_MS);
         }
@@ -253,15 +267,12 @@ extern "C" void app_main(void) {
     
     if(flag_local_data == '1') {
         //Send all logged data to Thingsboard
-        sd_err = dump_data_to_tb(file_data);
-        if (sd_err != ESP_OK) {
-            ESP_LOGI(TAG, "Failed to dump data: %s", file_data);
-        }
+        readFile(SD, "/log.txt");
         
         // All data sent, unmount partition and disable SDMMC peripheral
-        esp_vfs_fat_sdcard_unmount(mount_point, card);
+        SD.end();
         ESP_LOGI(TAG, "Card unmounted");
-
+        
         //Turn off flag_local_data
         write_string_to_nvs("flag_local_data", "0");
     }

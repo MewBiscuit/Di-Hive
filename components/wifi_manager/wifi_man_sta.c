@@ -89,11 +89,15 @@ esp_err_t connect_ap(const char *ssid, const char *password) {
     if (bits & WIFI_CONNECTED_BIT)
         ESP_LOGI(STA_TAG, "Connected to ap with SSID:%s password:%s", ssid, password);
 
-    else if (bits & WIFI_FAIL_BIT)
+    else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(STA_TAG, "Failed to connect to SSID:%s, password:%s", ssid, password);
+        return ESP_FAIL;
+    }
 
-    else
+    else {
         ESP_LOGE(STA_TAG, "UNEXPECTED EVENT");
+        return ESP_FAIL;
+    }
 
     return ESP_OK;
 }

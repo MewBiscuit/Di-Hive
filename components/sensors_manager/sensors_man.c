@@ -28,7 +28,7 @@ esp_err_t i2c_init() {
 }
 
 
-void i2c_scanner() { //TODO: change it to make the system modular
+void i2c_scanner() {
     int i;
     esp_err_t espRc;
 
