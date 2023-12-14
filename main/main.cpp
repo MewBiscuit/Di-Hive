@@ -29,17 +29,17 @@ extern "C" {
 #define MAX_CHAR_SIZE    128
 #define MOUNT_POINT "/sdcard"
 
-constexpr char CURRENT_FIRMWARE_TITLE[] PROGMEM = "Di-Hive";
-constexpr char CURRENT_FIRMWARE_VERSION[] PROGMEM = "0.1.0";
+constexpr char CURRENT_FIRMWARE_TITLE[] = "Di-Hive";
+constexpr char CURRENT_FIRMWARE_VERSION[] = "0.1.0";
 
-constexpr uint8_t FIRMWARE_FAILURE_RETRIES PROGMEM  = 12U;
-constexpr uint16_t FIRMWARE_PACKET_SIZE PROGMEM  = 4096U;
+constexpr uint8_t FIRMWARE_FAILURE_RETRIES = 12U;
+constexpr uint16_t FIRMWARE_PACKET_SIZE = 4096U;
 
-constexpr char TOKEN[] PROGMEM  = "g4gzei5ivlqn32g824lr";
-constexpr char THINGSBOARD_SERVER[] PROGMEM  = "demo.thingsboard.io";
-constexpr uint16_t THINGSBOARD_PORT PROGMEM  = 1883U;
-constexpr uint16_t MAX_FW_SIZE PROGMEM  = FIRMWARE_PACKET_SIZE + 50U;
-constexpr uint32_t SERIAL_DEBUG_BAUD PROGMEM  = 115200U;
+constexpr char TOKEN[] = "g4gzei5ivlqn32g824lr";
+constexpr char THINGSBOARD_SERVER[] = "demo.thingsboard.io";
+constexpr uint16_t THINGSBOARD_PORT = 1883U;
+constexpr uint16_t MAX_FW_SIZE = FIRMWARE_PACKET_SIZE + 50U;
+constexpr uint32_t SERIAL_DEBUG_BAUD = 115200U;
 
 Espressif_MQTT_Client mqtt_client;
 ThingsBoard tb(mqtt_client, MAX_FW_SIZE);
