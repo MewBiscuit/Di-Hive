@@ -7,5 +7,7 @@ cmake_minimum_required(VERSION 3.16)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 add_compile_options(-Wno-missing-braces)
+add_compile_options(-Wno-unused-variable)
+add_compile_options(-Wno-maybe-uninitialized)
 
 project(main)
