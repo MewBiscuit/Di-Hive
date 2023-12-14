@@ -12,6 +12,9 @@
 #include "SD.h"
 #include "SPI.h"
 
+
+//https://github.com/thingsboard/thingsboard-client-sdk/blob/master/examples/0011-esp8266_esp32_subscribe_OTA_MQTT/0011-esp8266_esp32_subscribe_OTA_MQTT.ino
+#include <Espressif_Updater.h>
 #include <Espressif_MQTT_Client.h>
 #include <ThingsBoard.h>
 
@@ -39,6 +42,36 @@ constexpr uint32_t SERIAL_DEBUG_BAUD = 115200U;
 
 Espressif_MQTT_Client mqtt_client;
 ThingsBoard tb(mqtt_client, MAX_FW_SIZE);
+Espressif_Updater updater;
+
+bool currentFWSent = false;
+bool updateRequestSent = false;
+
+void updatedCallback(const bool& success) {
+  if (success) {
+    ESP_LOGI(TAG, "Done, Reboot now");
+    esp_restart();
+    return;
+  }
+  ESP_LOGI(TAG, "Downloading firmware failed");
+}
+
+void progressCallback(const size_t& currentChunk, const size_t& totalChuncks) {
+  ESP_LOGI("MAIN", "Downwloading firmware progress %.2f%%", static_cast<float>(currentChunk * 100U) / totalChuncks);
+}
+
+void OTA_process(){
+    if (!currentFWSent) {
+        currentFWSent = tb.Firmware_Send_Info(CURRENT_FIRMWARE_TITLE, CURRENT_FIRMWARE_VERSION) && tb.Firmware_Send_State(FW_STATE_UPDATED);
+    }
+
+    if (!updateRequestSent) {
+        const OTA_Update_Callback callback(&progressCallback, &updatedCallback, CURRENT_FIRMWARE_TITLE, CURRENT_FIRMWARE_VERSION, &updater, FIRMWARE_FAILURE_RETRIES, FIRMWARE_PACKET_SIZE);
+        updateRequestSent = tb.Start_Firmware_Update(callback);
+    }
+
+    tb.loop();
+}
 
 esp_err_t appendFile(fs::FS &fs, const char * path, const char * message) {
     Serial.printf("Appending to file: %s\n", path);
@@ -105,6 +138,9 @@ esp_err_t deleteFile(fs::FS &fs, const char * path) {
     } else {
         Serial.println("Delete failed");
         return ESP_FAIL;
+    char *pos = strchr(line, '\n');
+    if (pos) {
+        *pos = '\0';
     }
 
     return ESP_OK;
@@ -276,6 +312,9 @@ extern "C" void app_main(void) {
         //Turn off flag_local_data
         write_string_to_nvs("flag_local_data", "0");
     }
+
+    //We check for OTA updates
+    OTA_process();
 
     //Execution loop
     for(;;) {
