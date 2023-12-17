@@ -26,7 +26,7 @@ extern "C" {
 #define MOUNT_POINT "/SDCH"
 
 #define SERVER "mqtt://demo.thingsboard.io"
-#define TOKEN "g4gzei5ivlqn32g824lr"
+#define TOKEN "TOKEN"
 #define TOPIC "v1/devices/me/telemetry"
 int port = 1883;
 
