@@ -1,5 +1,7 @@
 #include "wifi_man_ap.h"
 
+//TODO: add provisioning mode to allow for wifi configuration via app
+
 static esp_err_t wifi_init_ap() {
     esp_err_t err = ESP_OK;
 
@@ -19,7 +21,7 @@ static esp_err_t wifi_init_ap() {
     return err;
 }
 
-static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
+void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
     if (event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
         ESP_LOGI(AP_TAG, "station " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);

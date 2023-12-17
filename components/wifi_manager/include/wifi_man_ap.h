@@ -27,7 +27,7 @@ static esp_err_t wifi_init_ap();
  *
  * @return void
  */
-static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
+void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 
 /**
  * @brief Set up an access point with the given SSID and password.

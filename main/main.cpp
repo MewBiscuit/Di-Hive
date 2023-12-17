@@ -12,15 +12,10 @@
 #include "SD.h"
 #include "SPI.h"
 
-
-//https://github.com/thingsboard/thingsboard-client-sdk/blob/master/examples/0011-esp8266_esp32_subscribe_OTA_MQTT/0011-esp8266_esp32_subscribe_OTA_MQTT.ino
-#include <Espressif_Updater.h>
-#include <Espressif_MQTT_Client.h>
-#include <ThingsBoard.h>
-
 extern "C" {
     #include "nvs_man.h"
     #include "wifi_man.h"
+    #include "mqtt_man.h"
     #include "adc_man.h"
     #include "sensors_man.h"
 }
@@ -28,50 +23,16 @@ extern "C" {
 #define TAG "MAIN"
 #define ENCRYPTED false
 #define MAX_CHAR_SIZE 256
-#define MOUNT_POINT "/sdcard"
+#define MOUNT_POINT "/SDCH"
 
-constexpr char CURRENT_FIRMWARE_TITLE[] = "Di-Hive";
-constexpr char CURRENT_FIRMWARE_VERSION[] = "0.1.0";
-constexpr uint8_t FIRMWARE_FAILURE_RETRIES = 12U;
-constexpr uint16_t FIRMWARE_PACKET_SIZE = 4096U;
-constexpr char TOKEN[] = "g4gzei5ivlqn32g824lr";
-constexpr char THINGSBOARD_SERVER[] = "demo.thingsboard.io";
-constexpr uint16_t THINGSBOARD_PORT = 1883U;
-constexpr uint16_t MAX_FW_SIZE = FIRMWARE_PACKET_SIZE + 50U;
-constexpr uint32_t SERIAL_DEBUG_BAUD = 115200U;
+#define SERVER "mqtt://demo.thingsboard.io"
+#define TOKEN "g4gzei5ivlqn32g824lr"
+#define TOPIC "v1/devices/me/telemetry"
+int port = 1883;
 
-Espressif_MQTT_Client mqtt_client;
-ThingsBoard tb(mqtt_client, MAX_FW_SIZE);
-Espressif_Updater updater;
-
-bool currentFWSent = false;
-bool updateRequestSent = false;
-
-void updatedCallback(const bool& success) {
-  if (success) {
-    ESP_LOGI(TAG, "Done, Reboot now");
-    esp_restart();
-    return;
-  }
-  ESP_LOGI(TAG, "Downloading firmware failed");
-}
-
-void progressCallback(const size_t& currentChunk, const size_t& totalChuncks) {
-  ESP_LOGI("MAIN", "Downwloading firmware progress %.2f%%", static_cast<float>(currentChunk * 100U) / totalChuncks);
-}
-
-void OTA_process(){
-    if (!currentFWSent) {
-        currentFWSent = tb.Firmware_Send_Info(CURRENT_FIRMWARE_TITLE, CURRENT_FIRMWARE_VERSION) && tb.Firmware_Send_State(FW_STATE_UPDATED);
-    }
-
-    if (!updateRequestSent) {
-        const OTA_Update_Callback callback(&progressCallback, &updatedCallback, CURRENT_FIRMWARE_TITLE, CURRENT_FIRMWARE_VERSION, &updater, FIRMWARE_FAILURE_RETRIES, FIRMWARE_PACKET_SIZE);
-        updateRequestSent = tb.Start_Firmware_Update(callback);
-    }
-
-    tb.loop();
-}
+char ssid_var[256] = "dummy_data";
+char password_var[250] = "dummy_data";
+bool provisioned = false;
 
 esp_err_t appendFile(fs::FS &fs, const char * path, const char * message) {
     Serial.printf("Appending to file: %s\n", path);
@@ -123,8 +84,6 @@ esp_err_t readFile(fs::FS &fs, const char * path) {
     char buffer[255]; // Declare the buffer variable
     while(file.available()) { // Read one line at a time
         file.readStringUntil('\n').toCharArray(buffer, sizeof(buffer));
-        // Process the read data here
-        tb.sendTelemetryJson(buffer);
     }
     file.close();
 
@@ -135,43 +94,26 @@ esp_err_t deleteFile(fs::FS &fs, const char * path) {
     Serial.printf("Deleting file: %s\n", path);
     if(fs.remove(path)){
         Serial.println("File deleted");
-    } else {
+    } 
+    
+    else {
         Serial.println("Delete failed");
         return ESP_FAIL;
-    char *pos = strchr(line, '\n');
-    if (pos) {
-        *pos = '\0';
     }
-
+    
     return ESP_OK;
 }
 
 extern "C" void app_main(void) {
     //Variables
-    char flag_local_data = '0';
-    bool provisioned = false;
-    bool connected = false;
-    int temp_in = 0;
-    int hum_in = 0;
-    int temp_out = 0;
-    int noise = 0;
-    int weight = 0;
-    int channel = 1;
-    int max_connections = 4;
-    int attempts_recon_tb = 0;
-    char token[] = "xxxxxxxxxxxxxxxxxxxx";
-    char* ssid = "dummy_data";
-    char* password = "dummy_data";
-    char* ssid_prov = "Di-Core_Provisioning";
-    char* password_prov = "provisioning1234!";
+    char flag_local_data;
+    int temp_in, hum_in, temp_out, noise, weight;
     char data[255];
-    esp_err_t wifi_err = ESP_OK;
-    esp_err_t nvs_err = ESP_OK;
-    esp_err_t adc_err = ESP_OK;
-    esp_err_t i2c_err = ESP_OK;
-    esp_err_t sd_err = ESP_OK;
+    esp_err_t wifi_err, nvs_err, sd_err;
     time_t stamp;
-    uint8_t cardType = NULL;
+    uint8_t cardType;
+    esp_mqtt_client_handle_t tb_client;
+    adc_oneshot_unit_handle_t adc_handle;
 
     nvs_err = init_nvs();
     if (nvs_err != ESP_OK) {
@@ -204,82 +146,46 @@ extern "C" void app_main(void) {
     esp_sleep_enable_timer_wakeup(27000000);
 
     //Initialize ADC
-    adc_oneshot_unit_handle_t adc_handle = adc_manager_init_oneshot(ADC_UNIT_1);
-    adc_err = adc_manager_cfg_channel_oneshot(adc_handle, ADC_CHANNEL_6, ADC_BITWIDTH_DEFAULT, ADC_ATTEN_DB_11);
-    if (adc_err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure ADC channel 6! Err: %s", esp_err_to_name(adc_err));
-    }
-    adc_err = adc_manager_cfg_channel_oneshot(adc_handle, ADC_CHANNEL_4, ADC_BITWIDTH_DEFAULT, ADC_ATTEN_DB_11);
-    if (adc_err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure ADC channel 4! Err: %s", esp_err_to_name(adc_err));
-    }
+    adc_handle = adc_manager_init_oneshot(ADC_UNIT_1);
+    adc_manager_cfg_channel_oneshot(adc_handle, ADC_CHANNEL_6, ADC_BITWIDTH_DEFAULT, ADC_ATTEN_DB_11);
+    adc_manager_cfg_channel_oneshot(adc_handle, ADC_CHANNEL_4, ADC_BITWIDTH_DEFAULT, ADC_ATTEN_DB_11);
 
-    //Initialize other sensors
-    i2c_err = i2c_init();
-    i2c_err = init_PmodHYGRO();
-    if (i2c_err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize PmodHYGRO! Err: %s", esp_err_to_name(i2c_err));
-    }
-    i2c_err = PmodTMP3_read(&temp_out);
-    if (i2c_err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize PmodTMP3! Err: %s", esp_err_to_name(i2c_err));
-    }
+    //Initialize i2c sensors
+    i2c_init();
+    init_PmodHYGRO();
+    PmodTMP3_read(&temp_out);
 
     //Read credentials from NVS
-    nvs_err = read_string_from_nvs("ssid", ssid);
+    nvs_err = read_string_from_nvs("ssid", ssid_var);
     if(nvs_err != ESP_OK) {
         ESP_LOGI(TAG, "No SSID found in NVS");
     }
-    nvs_err = read_string_from_nvs("password", password);
+    nvs_err = read_string_from_nvs("password", password_var);
     if(nvs_err != ESP_OK) {
-        ESP_LOGI(TAG, "No password found in NVS");
-    }
-    nvs_err = read_string_from_nvs("token", token);
-    if(nvs_err != ESP_OK) {
-        //TODO: Ask for token
         ESP_LOGI(TAG, "No password found in NVS");
     }
     nvs_err = read_string_from_nvs("flag_local_data", &flag_local_data);
     if(nvs_err != ESP_OK) {
         write_string_to_nvs("flag_local_data", "0");
+        flag_local_data = '0';
     }
 
-    //Wifi setup
-    wifi_err = connect_ap(ssid, password);
+    //Connect to WiFi
+    wifi_err = connect_ap(ssid_var, password_var);
     if (wifi_err != ESP_OK) {
-        ESP_LOGI(TAG, "Error (%s) connecting to AP!", esp_err_to_name(wifi_err));
-
-        //Turn on flag_local_data
         write_string_to_nvs("flag_local_data", "1");
         flag_local_data = '1';
+        //TODO: Start up provisioning
+    }
 
-        //Setup AP for provisioning
-        wifi_release();
-        wifi_err = setup_ap(ssid_prov, password_prov, &channel, &max_connections);
-        if (wifi_err != ESP_OK) {
-            ESP_LOGE(TAG, "Error (%s) setting up AP!", esp_err_to_name(wifi_err));
-            return void();
-        }
-
-        //TODO: Start provisioning server with callback for prvisioned variable
-        
+    while (wifi_err != ESP_OK) {
+        ESP_LOGI(TAG, "Error (%s) connecting to AP!", esp_err_to_name(wifi_err));
         for(;!provisioned;) {
             //Read sensor data
-            i2c_err = PmodHYGRO_read(&temp_in, &hum_in);
-            if (i2c_err != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to read PmodHYGRO! Err: %s", esp_err_to_name(i2c_err));
-            }
-            i2c_err = PmodTMP3_read(&temp_out);
-            if (i2c_err != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to read PmodTMP3! Err: %s", esp_err_to_name(i2c_err));
-            }
-            adc_err = adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_6, &noise);
-            if (adc_err != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to read ADC channel 6! Err: %s", esp_err_to_name(adc_err));
-            }adc_err = adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_4, &weight);
-            if (adc_err != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to read ADC channel 4! Err: %s", esp_err_to_name(adc_err));
-            }
+            PmodHYGRO_read(&temp_in, &hum_in);
+            PmodTMP3_read(&temp_out);
+            adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_6, &noise);
+            adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_4, &weight);
 
             //Save data to SD card
             time(&stamp);
@@ -287,22 +193,17 @@ extern "C" void app_main(void) {
             "temperature_in", temp_in, "humidity_in", hum_in, "noise", noise, "weight", weight);
             appendFile(SD, "/log.txt", data);
 
-            //Can't send to sleep to keep AP running
+            //Can't send to sleep in order to keep prov server running
             vTaskDelay(30000 / portTICK_PERIOD_MS);
         }
-        wifi_release();
-        write_string_to_nvs("ssid", ssid);
-        write_string_to_nvs("password", password);
-        wifi_err = connect_ap(ssid, password);
-    }
-    
-    if (!tb.connected()) {
-        tb.connect(THINGSBOARD_SERVER, TOKEN, THINGSBOARD_PORT);
+        wifi_err = connect_ap(ssid_var, password_var);
     }
 
+    //Connect to Thingsboard
+    tb_client = connect_mqtt_token(SERVER, &port, TOKEN);
     
     if(flag_local_data == '1') {
-        //Send all logged data to Thingsboard
+        //TODO: Send all logged data to Thingsboard
         readFile(SD, "/log.txt");
         
         // All data sent, unmount partition and disable SDMMC peripheral
@@ -313,54 +214,23 @@ extern "C" void app_main(void) {
         write_string_to_nvs("flag_local_data", "0");
     }
 
-    //We check for OTA updates
-    OTA_process();
+    // Every 30 seconds we read all of the sensors and dump the data
+    PmodHYGRO_read(&temp_in, &hum_in);
+    PmodTMP3_read(&temp_out);
+    adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_6, &noise);
+    adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_4, &weight);
+    
+    //Process data
+    weight = weight - 300;
+    noise = noise * 100/4095;
 
-    //Execution loop
-    for(;;) {
-        // Every 30 seconds we read all of the sensors and dump the data
-        esp_deep_sleep_start();
-        i2c_err = PmodHYGRO_read(&temp_in, &hum_in);
-        if (i2c_err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to read PmodHYGRO! Err: %s", esp_err_to_name(i2c_err));
-        }
-        i2c_err = PmodTMP3_read(&temp_out);
-        if (i2c_err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to read PmodTMP3! Err: %s", esp_err_to_name(i2c_err));
-        }
-        adc_err = adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_6, &noise);
-        if (adc_err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to read ADC channel 6! Err: %s", esp_err_to_name(adc_err));
-        }
-        adc_err = adc_manager_read_oneshot(adc_handle, ADC_CHANNEL_4, &weight);
-        if (adc_err != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to read ADC channel 4! Err: %s", esp_err_to_name(adc_err));
-        }
+    //Send data to Thingsboard
+    post_numerical_data("temperature_in", &temp_in, TOPIC, tb_client);
+    post_numerical_data("humidity_in", &hum_in, TOPIC, tb_client);
+    post_numerical_data("temperature_out", &temp_out, TOPIC, tb_client);
+    post_numerical_data("noise", &noise, TOPIC, tb_client);
+    post_numerical_data("weight", &weight, TOPIC, tb_client);
 
-        tb.sendTelemetryData("temperature_in", temp_in);
-        tb.sendTelemetryData("humidity_in", hum_in);
-        tb.sendTelemetryData("temperature_out", temp_out);
-        tb.sendTelemetryData("noise", noise);
-        tb.sendTelemetryData("weight", weight);
-
-        tb.loop();
-
-        vTaskDelay(3000 / portTICK_PERIOD_MS); // Wait 3 seconds to avoid sleeping before sending data
-
-        if(!connected) {
-            esp_restart();
-        }
-
-        if (!tb.connected() && attempts_recon_tb < 3) {
-            tb.connect(THINGSBOARD_SERVER, TOKEN, THINGSBOARD_PORT);
-            attempts_recon_tb++;
-        }
-        else if (!tb.connected()) {
-            ESP_LOGE(TAG, "Failed to connect to Thingsboard! Err: %s", esp_err_to_name(ESP_ERR_TIMEOUT));
-            esp_restart();
-        }
-        else {
-            attempts_recon_tb = 0;
-        }
-    }
+    vTaskDelay(3000 / portTICK_PERIOD_MS); // Wait 3 seconds to avoid sleeping before sending data
+    esp_deep_sleep_start();
 }
