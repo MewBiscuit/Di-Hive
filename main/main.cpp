@@ -33,6 +33,8 @@ int port = 1883;
 char ssid_var[256] = "dummy_data";
 char password_var[250] = "dummy_data";
 bool provisioned = false;
+int max_connections = 4;
+int channel = 1;
 
 esp_err_t appendFile(fs::FS &fs, const char * path, const char * message) {
     Serial.printf("Appending to file: %s\n", path);
@@ -175,10 +177,11 @@ extern "C" void app_main(void) {
     if (wifi_err != ESP_OK) {
         write_string_to_nvs("flag_local_data", "1");
         flag_local_data = '1';
-        //TODO: Start up provisioning
+        wifi_release();
+        setup_ap("Di-Core_Prov", "provisioning112", &channel, &max_connections);
     }
 
-    while (wifi_err != ESP_OK) {
+    while (!is_provisioned()) {
         ESP_LOGI(TAG, "Error (%s) connecting to AP!", esp_err_to_name(wifi_err));
         for(;!provisioned;) {
             //Read sensor data
@@ -196,7 +199,7 @@ extern "C" void app_main(void) {
             //Can't send to sleep in order to keep prov server running
             vTaskDelay(30000 / portTICK_PERIOD_MS);
         }
-        wifi_err = connect_ap(ssid_var, password_var);
+    
     }
 
     //Connect to Thingsboard

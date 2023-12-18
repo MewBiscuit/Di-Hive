@@ -1,6 +1,5 @@
 #include "wifi_man_ap.h"
-
-//TODO: add provisioning mode to allow for wifi configuration via app
+#include "wifi_man.h"
 
 static esp_err_t wifi_init_ap() {
     esp_err_t err = ESP_OK;
@@ -21,8 +20,72 @@ static esp_err_t wifi_init_ap() {
     return err;
 }
 
+esp_err_t start_provisioning(char *ssid, char *password) {
+    esp_err_t err = ESP_OK;
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, NULL));
+    wifi_prov_mgr_config_t config = {
+        .scheme = wifi_prov_scheme_softap,
+        .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
+    };
+    ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
+    ESP_LOGI(AP_TAG, "Starting provisioning");
+    ESP_ERROR_CHECK(wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_0, NULL, ssid, password));
+    return err;
+
+}
+
+bool is_provisioned() {
+    bool provisioned = false;
+    ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
+    return provisioned;
+}
+
 void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-    if (event_id == WIFI_EVENT_AP_STACONNECTED) {
+    static int retries = 0;
+    if (event_base == WIFI_PROV_EVENT) {
+        switch (event_id) {
+            case WIFI_PROV_START:
+                ESP_LOGI(AP_TAG, "Provisioning started");
+                break;
+            case WIFI_PROV_CRED_RECV: {
+                wifi_sta_config_t *wifi_sta_cfg = (wifi_sta_config_t *)event_data;
+                ESP_LOGI(AP_TAG, "Received Wi-Fi credentials"
+                         "\n\tSSID     : %s\n\tPassword : %s",
+                         (const char *) wifi_sta_cfg->ssid,
+                         (const char *) wifi_sta_cfg->password);
+                //save ssid and password to char[] and pass to setup_ap
+                char ssid[256];
+                char password[256];
+                memcpy(ssid, wifi_sta_cfg->ssid, strlen((const char *) wifi_sta_cfg->ssid));
+                memcpy(password, wifi_sta_cfg->password, strlen((const char *) wifi_sta_cfg->password));
+                write_string_to_nvs("ssid", ssid);
+                write_string_to_nvs("password", password);
+                wifi_release();
+                connect_ap(ssid, password);
+                break;
+            }
+            case WIFI_PROV_CRED_FAIL: {
+                wifi_prov_sta_fail_reason_t *reason = (wifi_prov_sta_fail_reason_t *)event_data;
+                ESP_LOGE(AP_TAG, "Provisioning failed!\n\tReason : %s"
+                         "\n\tPlease reset to factory and retry provisioning",
+                         (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
+                         "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
+                break;
+            }
+            case WIFI_PROV_CRED_SUCCESS:
+                ESP_LOGI(AP_TAG, "Provisioning successful");
+                retries = 0;
+                break;
+            case WIFI_PROV_END:
+                /* De-initialize manager once provisioning is finished */
+                wifi_prov_mgr_deinit();
+                break;
+            default:
+                break;
+        }
+    }
+
+    else if (event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
         ESP_LOGI(AP_TAG, "station " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
     }
@@ -85,6 +148,8 @@ esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connection
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(AP_TAG, "wifi_init_softap finished. SSID:%s password:%s channel:%d", ssid, password, *channel);
+
+    start_provisioning(ssid, password);
 
     return ESP_OK;
 }

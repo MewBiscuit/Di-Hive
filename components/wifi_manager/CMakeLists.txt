@@ -4,4 +4,5 @@ idf_component_register(SRCS "wifi_man.c" "wifi_man_sta.c" "wifi_man_ap.c" "${com
                        INCLUDE_DIRS "include"
                        REQUIRES
                             esp_wifi
-                            nvs_manager)
+                            nvs_manager
+                            wifi_provisioning)

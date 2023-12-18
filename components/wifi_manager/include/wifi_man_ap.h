@@ -13,9 +13,27 @@
 #include "lwip/sys.h"
 #include "nvs_man.h"
 
+#include <wifi_provisioning/manager.h>
+#include <wifi_provisioning/scheme_softap.h>
+
 static const char *AP_TAG = "wifi_man_ap";
 
 static esp_err_t wifi_init_ap();
+
+/**
+ * @brief Start the provisioning process.
+ * 
+ * @return esp_err_t
+*/
+esp_err_t start_provisioning();
+
+/**
+ * @brief Check if the device has been provisioned.
+ * 
+ * @return true 
+ * @return false 
+ */
+bool is_provisioned();
 
 /**
  * @brief event_handler for the access point.
