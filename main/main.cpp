@@ -204,6 +204,7 @@ extern "C" void app_main(void) {
             ESP_LOGI(TAG, "No password found in NVS");
         }
         wifi_err = connect_ap(ssid_var, password_var);
+        ESP_LOGI(TAG, "This too, shall pass");
     }
 
     //Connect to Thingsboard

@@ -222,12 +222,7 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
                          "\n\tPlease reset to factory and retry provisioning",
                          (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
                          "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
-                retries++;
-                if (retries >= 3) {
-                    ESP_LOGI(AP_TAG, "Failed to connect with provisioned AP, reseting provisioned credentials");
-                    wifi_prov_mgr_reset_sm_state_on_failure();
-                    retries = 0;
-                }
+                wifi_prov_mgr_reset_sm_state_on_failure();
                 break;
             }
             case WIFI_PROV_CRED_SUCCESS:
