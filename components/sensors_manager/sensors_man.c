@@ -1,6 +1,6 @@
 #include "sensors_man.h"
 
-esp_err_t i2c_init() {
+esp_err_t i2c_init_sensors() {
     esp_err_t ret = ESP_OK;
 
     i2c_config_t conf = {

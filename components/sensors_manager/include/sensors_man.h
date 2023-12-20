@@ -16,7 +16,7 @@
 #define SENSORS_TAG "SENSORS_MANAGER"
 
 
-esp_err_t i2c_init();
+esp_err_t i2c_init_sensors();
 
 void i2c_scanner();
 
