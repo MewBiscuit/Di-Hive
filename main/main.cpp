@@ -8,16 +8,13 @@
 #include "esp_log.h"
 #include "esp_sleep.h"
 
-#include "FS.h"
-#include "SD.h"
-#include "SPI.h"
-
 extern "C" {
     #include "nvs_man.h"
     #include "wifi_man.h"
     #include "mqtt_man.h"
     #include "adc_man.h"
     #include "sensors_man.h"
+    #include "rc522.h"
 }
 
 #define TAG "MAIN"
@@ -36,74 +33,29 @@ bool provisioned = false;
 int max_connections = 4;
 int channel = 1;
 
-esp_err_t appendFile(fs::FS &fs, const char * path, const char * message) {
-    Serial.printf("Appending to file: %s\n", path);
+static rc522_handle_t scanner;
 
-    File file = fs.open(path, FILE_APPEND);
-    if(!file){
-        Serial.println("Failed to open file for appending");
-        return ESP_FAIL;
+static void rc522_handler(void* arg, esp_event_base_t base, int32_t event_id, void* event_data)
+{
+    rc522_event_data_t* data = (rc522_event_data_t*) event_data;
+
+    switch(event_id) {
+        case RC522_EVENT_TAG_SCANNED: {
+                rc522_tag_t* tag = (rc522_tag_t*) data->ptr;
+                ESP_LOGI(TAG, "Tag scanned (sn: %" PRIu64 ")", tag->serial_number);
+                //Read from NVS to check if tag is authorized
+                char is_authorized[2] = "0"; // Change the declaration to an array of characters
+                if(read_string_from_nvs((char*)tag->serial_number, is_authorized) == ESP_OK) { // Cast tag->serial_number to char*
+                    ESP_LOGI(TAG, "Tag authorized");
+                    //Open the box
+                    ESP_LOGI(TAG, "Opening the box");
+                }
+                else {
+                    ESP_LOGI(TAG, "Tag not authorized");
+                }
+            }
+            break;
     }
-    if(file.print(message)){
-        Serial.println("Message appended");
-    } else {
-        Serial.println("Append failed");
-    }
-    file.close();
-
-    return ESP_OK;
-}
-
-esp_err_t writeFile(fs::FS &fs, const char * path, const char * message) {
-    Serial.printf("Writing file: %s\n", path);
-
-    File file = fs.open(path, FILE_WRITE);
-    if(!file){
-        Serial.println("Failed to open file for writing");
-        return ESP_FAIL;
-    }
-    if(file.print(message)){
-        Serial.println("File written");
-    } else {
-        Serial.println("Write failed");
-        return ESP_FAIL;
-    }
-    file.close();
-
-    return ESP_OK;
-}
-
-esp_err_t readFile(fs::FS &fs, const char * path) {
-    Serial.printf("Reading file: %s\n", path);
-
-    File file = fs.open(path);
-    if(!file){
-        Serial.println("Failed to open file for reading");
-        return ESP_FAIL;
-    }
-
-    Serial.print("Read from file: ");
-    char buffer[255]; // Declare the buffer variable
-    while(file.available()) { // Read one line at a time
-        file.readStringUntil('\n').toCharArray(buffer, sizeof(buffer));
-    }
-    file.close();
-
-    return ESP_OK;
-}
-
-esp_err_t deleteFile(fs::FS &fs, const char * path) {
-    Serial.printf("Deleting file: %s\n", path);
-    if(fs.remove(path)){
-        Serial.println("File deleted");
-    } 
-    
-    else {
-        Serial.println("Delete failed");
-        return ESP_FAIL;
-    }
-    
-    return ESP_OK;
 }
 
 extern "C" void app_main(void) {
@@ -123,29 +75,22 @@ extern "C" void app_main(void) {
         return void();
     }
 
-    //Setup SD card
-    SPI.begin(GPIO_NUM_18, GPIO_NUM_19, GPIO_NUM_23, GPIO_NUM_5);
-    SPI.setDataMode(SPI_MODE0);
-    SD.begin(GPIO_NUM_5);
-    if(!SD.begin()){
-        ESP_LOGI(TAG, "Card Mount Failed");
-        sd_err = ESP_FAIL;
-    }
+    rc522_config_t config = {
+        .spi = {
+            .host = HSPI_HOST,
+            .miso_gpio = 15,
+            .mosi_gpio = 4,
+            .sck_gpio = 16,
+            .sda_gpio = 17
+        }
+    };
 
-    if(sd_err != ESP_FAIL){
-        ESP_LOGI(TAG, "SD card initialized");
-        cardType = SD.cardType();
-    }
-
-    if(cardType == CARD_NONE){
-        ESP_LOGI(TAG, "No SD card attached");
-        sd_err = ESP_FAIL;
-    }
-
-    writeFile(SD, "/log.txt", "");
+    rc522_create(&config, &scanner);
+    rc522_register_events(scanner, RC522_EVENT_ANY, rc522_handler, NULL);
+    rc522_start(scanner);
 
     //Set deep sleep to 30 secs
-    esp_sleep_enable_timer_wakeup(27000000);
+    esp_sleep_enable_timer_wakeup(25000000);
 
     //Initialize ADC
     adc_handle = adc_manager_init_oneshot(ADC_UNIT_1);
@@ -194,7 +139,6 @@ extern "C" void app_main(void) {
             time(&stamp);
             snprintf(data, MAX_CHAR_SIZE, "{'ts':%lld, 'values':{'%s':%d, '%s':%d, '%s':%d, '%s':%d, '%s':%d}}", stamp, "temperature_out", temp_out,
             "temperature_in", temp_in, "humidity_in", hum_in, "noise", noise, "weight", weight);
-            appendFile(SD, "/log.txt", data);
 
             //Can't send to sleep in order to keep prov server running
             vTaskDelay(30000 / portTICK_PERIOD_MS);
@@ -215,10 +159,8 @@ extern "C" void app_main(void) {
     
     if(flag_local_data == '1') {
         //TODO: Send all logged data to Thingsboard
-        readFile(SD, "/log.txt");
         
         // All data sent, unmount partition and disable SDMMC peripheral
-        SD.end();
         ESP_LOGI(TAG, "Card unmounted");
         
         //Turn off flag_local_data
@@ -242,6 +184,6 @@ extern "C" void app_main(void) {
     post_numerical_data("noise", &noise, TOPIC, tb_client);
     post_numerical_data("weight", &weight, TOPIC, tb_client);
 
-    vTaskDelay(3000 / portTICK_PERIOD_MS); // Wait 3 seconds to avoid sleeping before sending data
+    vTaskDelay(5000 / portTICK_PERIOD_MS); // Wait 5 seconds to avoid sleeping before sending data and to give chance to open the box
     esp_deep_sleep_start();
 }
