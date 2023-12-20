@@ -3,34 +3,12 @@
 static int s_retry_num = 0;
 
 //Wifi STA
-static esp_err_t wifi_init_sta() {
-    esp_err_t err = ESP_OK;
-
-    err = init_nvs();
-    ESP_ERROR_CHECK(err);
-
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-
-    err = esp_wifi_init(&cfg);
-    if (err != ESP_OK) {
-        ESP_LOGI(STA_TAG, "Error (%s) initializing wifi!", esp_err_to_name(err));
-    }
-
-    return err;
-}
-
 esp_err_t connect_ap(const char *ssid, const char *password) {
-    wifi_init_sta();
     s_wifi_event_group = xEventGroupCreate();
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
 
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, &instance_any_id));
-
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL, &instance_got_ip));
 
     int len_ssid = strlen(ssid);
@@ -84,24 +62,23 @@ esp_err_t disconnect_ap() {
 }
 
 //Wifi AP
-static esp_err_t wifi_init_ap() {
-    esp_err_t err = ESP_OK;
-
-    err = init_nvs();
-    ESP_ERROR_CHECK(err);
-
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_ap();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    err = esp_wifi_init(&cfg);
-    if (err != ESP_OK) {
-        ESP_LOGI(AP_TAG, "Error (%s) initializing wifi!", esp_err_to_name(err));
+esp_err_t custom_prov_data_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen,
+                                          uint8_t **outbuf, ssize_t *outlen, void *priv_data)
+{
+    if (inbuf) {
+        ESP_LOGI(AP_TAG, "Received data: %.*s", inlen, (char *)inbuf);
     }
+    char response[] = "SUCCESS";
+    *outbuf = (uint8_t *)strdup(response);
+    if (*outbuf == NULL) {
+        ESP_LOGE(AP_TAG, "System out of memory");
+        return ESP_ERR_NO_MEM;
+    }
+    *outlen = strlen(response) + 1; /* +1 for NULL terminating byte */
 
-    return err;
+    return ESP_OK;
 }
+
 
 esp_err_t start_provisioning(char *ssid, char *password) {
     esp_err_t err = ESP_OK;
@@ -113,6 +90,7 @@ esp_err_t start_provisioning(char *ssid, char *password) {
     ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
     ESP_LOGI(AP_TAG, "Starting provisioning");
     ESP_ERROR_CHECK(wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_0, NULL, ssid, password));
+    wifi_prov_mgr_endpoint_register("custom-data", custom_prov_data_handler, NULL);
     return err;
 
 }
@@ -124,7 +102,6 @@ bool is_provisioned() {
 }
 
 esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connections) {
-    wifi_init_ap();
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, NULL));
 
     uint8_t len_ssid = strlen(ssid);
@@ -182,6 +159,27 @@ esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connection
 }
 
 //General
+esp_err_t wifi_init() {
+    esp_err_t err = ESP_OK;
+
+    err = init_nvs();
+    ESP_ERROR_CHECK(err);
+
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_netif_create_default_wifi_sta();
+    esp_netif_create_default_wifi_ap();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+
+    err = esp_wifi_init(&cfg);
+    if (err != ESP_OK) {
+        ESP_LOGI(STA_TAG, "Error (%s) initializing wifi!", esp_err_to_name(err));
+    }
+
+    return err;
+}
+
 esp_err_t wifi_release() {
     esp_err_t err = ESP_OK;
     ESP_ERROR_CHECK(esp_wifi_disconnect());
@@ -204,15 +202,18 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
                          "\n\tSSID     : %s\n\tPassword : %s",
                          (const char *) wifi_sta_cfg->ssid,
                          (const char *) wifi_sta_cfg->password);
-                //save ssid and password to char[] and pass to setup_ap
+                //save ssid and password to char[] and pass to connect_ap
                 char ssid[256];
                 char password[256];
-                memcpy(ssid, wifi_sta_cfg->ssid, strlen((const char *) wifi_sta_cfg->ssid));
-                memcpy(password, wifi_sta_cfg->password, strlen((const char *) wifi_sta_cfg->password));
+                strncpy(ssid, (const char *)wifi_sta_cfg->ssid, sizeof(ssid) - 1);
+                ssid[sizeof(ssid) - 1] = '\0';
+                strncpy(password, (const char *)wifi_sta_cfg->password, sizeof(password) - 1);
+                password[sizeof(password) - 1] = '\0';
+                ESP_LOGI(AP_TAG, "Saving credentials to NVS");
+                ESP_LOGI(AP_TAG, "SSID: %s", ssid);
+                ESP_LOGI(AP_TAG, "Password: %s", password);
                 write_string_to_nvs("ssid", ssid);
                 write_string_to_nvs("password", password);
-                wifi_release();
-                connect_ap(ssid, password);
                 break;
             }
             case WIFI_PROV_CRED_FAIL: {
@@ -221,6 +222,12 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
                          "\n\tPlease reset to factory and retry provisioning",
                          (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
                          "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
+                retries++;
+                if (retries >= 3) {
+                    ESP_LOGI(AP_TAG, "Failed to connect with provisioned AP, reseting provisioned credentials");
+                    wifi_prov_mgr_reset_sm_state_on_failure();
+                    retries = 0;
+                }
                 break;
             }
             case WIFI_PROV_CRED_SUCCESS:

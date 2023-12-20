@@ -173,17 +173,17 @@ extern "C" void app_main(void) {
     }
 
     //Connect to WiFi
+    wifi_init();
     wifi_err = connect_ap(ssid_var, password_var);
     if (wifi_err != ESP_OK) {
         write_string_to_nvs("flag_local_data", "1");
         flag_local_data = '1';
-        wifi_release();
         setup_ap("Di-Core_Prov", "provisioning112", &channel, &max_connections);
     }
 
-    while (!is_provisioned()) {
+    while (wifi_err != ESP_OK) {
         ESP_LOGI(TAG, "Error (%s) connecting to AP!", esp_err_to_name(wifi_err));
-        for(;!provisioned;) {
+        for(;!is_provisioned();) {
             //Read sensor data
             PmodHYGRO_read(&temp_in, &hum_in);
             PmodTMP3_read(&temp_out);
@@ -199,7 +199,15 @@ extern "C" void app_main(void) {
             //Can't send to sleep in order to keep prov server running
             vTaskDelay(30000 / portTICK_PERIOD_MS);
         }
-    
+        nvs_err = read_string_from_nvs("ssid", ssid_var);
+        if(nvs_err != ESP_OK) {
+            ESP_LOGI(TAG, "No SSID found in NVS");
+        }
+        nvs_err = read_string_from_nvs("password", password_var);
+        if(nvs_err != ESP_OK) {
+            ESP_LOGI(TAG, "No password found in NVS");
+        }
+        wifi_err = connect_ap(ssid_var, password_var);
     }
 
     //Connect to Thingsboard

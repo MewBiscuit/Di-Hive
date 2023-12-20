@@ -30,20 +30,6 @@ static const char *AP_TAG = "wifi_man_ap";
 
 static EventGroupHandle_t s_wifi_event_group;
 
-static esp_err_t wifi_init_sta();
-
-/**
- * @brief Event handler for the Station mode.
- *
- * @param arg
- * @param event_base
- * @param event_id
- * @param event_data
- *
- * @return void
- */
-void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
-
 /**
  * @brief Connect to an access point with the given SSID and password.
  *
@@ -61,8 +47,6 @@ esp_err_t connect_ap(const char *ssid, const char *password);
  */
 esp_err_t disconnect_ap(void);
 
-static esp_err_t wifi_init_ap();
-
 /**
  * @brief Start the provisioning process.
  * 
@@ -79,18 +63,6 @@ esp_err_t start_provisioning();
 bool is_provisioned();
 
 /**
- * @brief event_handler for the access point.
- *
- * @param arg
- * @param event_base
- * @param event_id
- * @param event_data
- *
- * @return void
- */
-void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
-
-/**
  * @brief Set up an access point with the given SSID and password.
  *
  * @param ssid The SSID of the access point to set up.
@@ -100,6 +72,7 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
  */
 esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connections);
 
+esp_err_t wifi_init();
 
 /**
  * @brief Release the wifi module
@@ -107,5 +80,17 @@ esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connection
  * @return esp_err_t
  */
 esp_err_t wifi_release(void);
+
+/**
+ * @brief Event handler
+ *
+ * @param arg
+ * @param event_base
+ * @param event_id
+ * @param event_data
+ *
+ * @return void
+ */
+void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 
 #endif
