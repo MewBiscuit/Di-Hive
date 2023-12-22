@@ -237,6 +237,7 @@ extern "C" void app_main(void) {
     post_numerical_data("noise", &noise, TOPIC, tb_client);
     post_numerical_data("weight", &weight, TOPIC, tb_client);
 
-    vTaskDelay(5000 / portTICK_PERIOD_MS); // Wait 5 seconds to avoid sleeping before sending data and to give chance to open the box
+    vTaskDelay(5000 / portTICK_PERIOD_MS); // Wait 5 seconds to avoid sleeping before sending data
+    wifi_release();
     esp_deep_sleep_start();
 }
