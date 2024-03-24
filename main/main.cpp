@@ -74,8 +74,7 @@ uint8_t locked [] =
 
 SSD1306_t dev;
 
-static void rc522_handler(void* arg, esp_event_base_t base, int32_t event_id, void* event_data)
-{
+static void rc522_handler(void* arg, esp_event_base_t base, int32_t event_id, void* event_data) {
     rc522_event_data_t* data = (rc522_event_data_t*) event_data;
 
     switch(event_id) {
