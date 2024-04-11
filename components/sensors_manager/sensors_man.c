@@ -50,6 +50,31 @@ void i2c_scanner() {
     printf("\n>> Scanning done.\n");
 }
 
+esp_err_t mic_setup(enum Microphone mic_type) {
+    esp_err_t err = ESP_OK;
+
+    switch (mic_type) {
+        case INMP441:
+                i2s_config_t i2s_config = {
+                    .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
+                    .sample_rate = 48000,
+                    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+                    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+                    .communication_format = I2S_COMM_FORMAT_I2S,
+                    .intr_alloc_flags = 0,
+                    .dma_buf_count = 2,
+                    .dma_buf_len = 1024
+                };
+
+                err = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
+        
+        default:
+            return ESP_ERR_INVALID_ARG;
+    }
+
+    return err;
+}
+
 esp_err_t init_PmodHYGRO() {
     esp_err_t ret = ESP_OK;
     uint8_t data[2];
