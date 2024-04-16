@@ -50,6 +50,75 @@ void i2c_scanner() {
     printf("\n>> Scanning done.\n");
 }
 
+esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
+    esp_err_t err = ESP_OK;
+
+    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
+
+    i2s_new_channel(&chan_cfg, NULL, rx_handle);
+
+    switch (mic_type) {
+        case INMP441:
+            i2s_std_config_t std_cfg = {
+                .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(48000),
+                .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_STEREO),
+                .gpio_cfg = {
+                    .mclk = I2S_GPIO_UNUSED,
+                    .bclk = GPIO_NUM_4,
+                    .ws = GPIO_NUM_5,
+                    .dout = I2S_GPIO_UNUSED,
+                    .din = GPIO_NUM_19,
+                    .invert_flags = {
+                        .mclk_inv = false,
+                        .bclk_inv = false,
+                        .ws_inv = false,
+                    },
+                },
+            };
+
+            err = i2s_channel_init_std_mode(*rx_handle, &std_cfg);
+            if(err != ESP_OK) {
+                return err;
+            }
+
+            err = i2s_channel_enable(*rx_handle);
+        
+        default:
+            ESP_LOGE(SENSORS_TAG, "Failed to initialize microphone: Unknown hardware");
+            return ESP_ERR_INVALID_ARG;
+    }
+
+    return err;
+}
+
+esp_err_t read_noise_level(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
+    esp_err_t err = ESP_OK;
+
+     switch (mic_type) {
+            case INMP441:
+                err = i2s_channel_read(*rx_handle, NULL, 32, 24, 100);
+            
+            default:
+                ESP_LOGE(SENSORS_TAG, "Failed to initialize microphone: Unknown hardware");
+                return ESP_ERR_INVALID_ARG;
+        }
+
+    return err;
+}
+
+esp_err_t mic_shut_down(i2s_chan_handle_t* rx_handle) {
+    esp_err_t err = ESP_OK;
+
+    err = i2s_channel_disable(*rx_handle);
+    if(err != ESP_OK) {
+        return err;
+    }
+
+    err = i2s_del_channel(*rx_handle);
+
+    return err;
+}
+
 esp_err_t init_PmodHYGRO() {
     esp_err_t ret = ESP_OK;
     uint8_t data[2];
