@@ -55,7 +55,7 @@ esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
 
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
 
-    i2s_new_channel(&chan_cfg, NULL, &rx_handle);
+    i2s_new_channel(&chan_cfg, NULL, rx_handle);
 
     switch (mic_type) {
         case INMP441:
@@ -76,12 +76,12 @@ esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
                 },
             };
 
-            err = i2s_channel_init_std_mode(rx_handle, &std_cfg);
+            err = i2s_channel_init_std_mode(*rx_handle, &std_cfg);
             if(err != ESP_OK){
                 return err;
             }
 
-            err = i2s_channel_enable(rx_handle);
+            err = i2s_channel_enable(*rx_handle);
             if(err != ESP_OK){
                 return err;
             }
