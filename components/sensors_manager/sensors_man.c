@@ -50,23 +50,41 @@ void i2c_scanner() {
     printf("\n>> Scanning done.\n");
 }
 
-esp_err_t mic_setup(enum Microphone mic_type) {
+esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
     esp_err_t err = ESP_OK;
+
+    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
+
+    i2s_new_channel(&chan_cfg, NULL, &rx_handle);
 
     switch (mic_type) {
         case INMP441:
-                i2s_config_t i2s_config = {
-                    .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
-                    .sample_rate = 48000,
-                    .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
-                    .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
-                    .communication_format = I2S_COMM_FORMAT_I2S,
-                    .intr_alloc_flags = 0,
-                    .dma_buf_count = 2,
-                    .dma_buf_len = 1024
-                };
+            i2s_std_config_t std_cfg = {
+                .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(48000),
+                .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_STEREO),
+                .gpio_cfg = {
+                    .mclk = I2S_GPIO_UNUSED,
+                    .bclk = GPIO_NUM_4,
+                    .ws = GPIO_NUM_5,
+                    .dout = I2S_GPIO_UNUSED,
+                    .din = GPIO_NUM_19,
+                    .invert_flags = {
+                        .mclk_inv = false,
+                        .bclk_inv = false,
+                        .ws_inv = false,
+                    },
+                },
+            };
 
-                err = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
+            err = i2s_channel_init_std_mode(rx_handle, &std_cfg);
+            if(err != ESP_OK){
+                return err;
+            }
+
+            err = i2s_channel_enable(rx_handle);
+            if(err != ESP_OK){
+                return err;
+            }
         
         default:
             return ESP_ERR_INVALID_ARG;

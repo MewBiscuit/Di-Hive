@@ -4,11 +4,8 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "driver/i2c.h"
-#include <driver/i2s.h>
-
-#define I2S_MIC_SERIAL_CLOCK GPIO_NUM_26
-#define I2S_MIC_LEFT_RIGHT_CLOCK GPIO_NUM_22
-#define I2S_MIC_SERIAL_DATA GPIO_NUM_21
+#include <driver/i2s_std.h>
+#include <driver/gpio.h>
 
 #define I2C_MASTER_SCL_IO    22   
 #define I2C_MASTER_SDA_IO    21    
@@ -31,10 +28,29 @@ void i2c_scanner();
  * @brief Set up microphone, including I2S protocol and specific hardware
  * 
  * @param mic_type Microphone hardware being used
+ * @param rx_handle Handler variable for I2S module on ESP32
  * 
  * @return esp_err_t Error code
 */
-esp_err_t mic_setup(enum Microphone mic_type);
+esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle);
+
+/**
+ * @brief Reads the current noise level
+ * 
+ * @param rx_handle Handler variable for I2S module on ESP32
+ * 
+ * @return 
+*/
+esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle);
+
+/**
+ * @brief Future function intended for recording audio samples of hives for post analysis and model training
+ * 
+ * @param rx_handle Handler variable for I2S module on ESP32
+ * 
+ * @return esp_err_t Error code
+*/
+esp_err_t record_sample(i2s_chan_handle_t* rx_handle);
 
 
 esp_err_t init_PmodHYGRO();
