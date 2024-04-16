@@ -37,11 +37,12 @@ esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle);
 /**
  * @brief Reads the current noise level
  * 
+ * @param mic_type Microphone hardware being used
  * @param rx_handle Handler variable for I2S module on ESP32
  * 
  * @return esp_err_t Error code
 */
-esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle);
+esp_err_t read_noise_level(enum Microphone mic_type, i2s_chan_handle_t* rx_handle);
 
 /**
  * @brief Future function intended for recording audio samples of hives for post analysis and model training
@@ -67,7 +68,5 @@ esp_err_t init_PmodHYGRO();
 esp_err_t PmodHYGRO_read(int *temp, int *hum);
 
 esp_err_t PmodTMP3_read(int *temp);
-
-
 
 #endif

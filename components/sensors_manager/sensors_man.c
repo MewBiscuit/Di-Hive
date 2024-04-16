@@ -82,17 +82,29 @@ esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
             }
 
             err = i2s_channel_enable(*rx_handle);
-            if(err != ESP_OK) {
-                return err;
-            }
         
         default:
+            ESP_LOGE(SENSORS_TAG, "Failed to initialize microphone: Unknown hardware");
             return ESP_ERR_INVALID_ARG;
     }
 
     return err;
 }
 
+esp_err_t read_noise_level(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
+    esp_err_t err = ESP_OK;
+
+     switch (mic_type) {
+            case INMP441:
+                err = i2s_channel_read(*rx_handle, NULL, 32, 24, 100);
+            
+            default:
+                ESP_LOGE(SENSORS_TAG, "Failed to initialize microphone: Unknown hardware");
+                return ESP_ERR_INVALID_ARG;
+        }
+
+    return err;
+}
 
 esp_err_t mic_shut_down(i2s_chan_handle_t* rx_handle) {
     esp_err_t err = ESP_OK;
@@ -106,8 +118,6 @@ esp_err_t mic_shut_down(i2s_chan_handle_t* rx_handle) {
 
     return err;
 }
-
-esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle);
 
 esp_err_t init_PmodHYGRO() {
     esp_err_t ret = ESP_OK;
