@@ -39,7 +39,7 @@ esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle);
  * 
  * @param rx_handle Handler variable for I2S module on ESP32
  * 
- * @return 
+ * @return esp_err_t Error code
 */
 esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle);
 
@@ -50,7 +50,16 @@ esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle);
  * 
  * @return esp_err_t Error code
 */
-esp_err_t record_sample(i2s_chan_handle_t* rx_handle);
+//esp_err_t record_sample(i2s_chan_handle_t* rx_handle);
+
+/**
+ * @brief Shuts down the microphone module
+ * 
+ * @param rx_handle Handler variable for I2S module on ESP32
+ * 
+ * @return esp_err_t Error code
+*/
+esp_err_t mic_shut_down(i2s_chan_handle_t* rx_handle);
 
 
 esp_err_t init_PmodHYGRO();

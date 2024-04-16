@@ -77,12 +77,12 @@ esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
             };
 
             err = i2s_channel_init_std_mode(*rx_handle, &std_cfg);
-            if(err != ESP_OK){
+            if(err != ESP_OK) {
                 return err;
             }
 
             err = i2s_channel_enable(*rx_handle);
-            if(err != ESP_OK){
+            if(err != ESP_OK) {
                 return err;
             }
         
@@ -92,6 +92,22 @@ esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
 
     return err;
 }
+
+
+esp_err_t mic_shut_down(i2s_chan_handle_t* rx_handle) {
+    esp_err_t err = ESP_OK;
+
+    err = i2s_channel_disable(*rx_handle);
+    if(err != ESP_OK) {
+        return err;
+    }
+
+    err = i2s_del_channel(*rx_handle);
+
+    return err;
+}
+
+esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle);
 
 esp_err_t init_PmodHYGRO() {
     esp_err_t ret = ESP_OK;
