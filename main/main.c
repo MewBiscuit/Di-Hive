@@ -30,11 +30,18 @@ int port = 1883;
 char ssid_var[256] = "dummy_data";
 char password_var[250] = "dummy_data";
 
-//ESP_Provisioning
-bool provisioned = false;
-int max_connections = 4;
-int channel = 1;
-
 void app_main() {
+    i2s_chan_handle_t rx_handle;
+    esp_err_t err = ESP_OK;
+    int data = 0, i;
 
+    err = mic_setup(INMP441, &rx_handle);
+
+    for(i = 0; i < 100; i++){
+        err = read_noise_level(&rx_handle, &data);
+        printf("%d\n", data);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+
+    return;
 }

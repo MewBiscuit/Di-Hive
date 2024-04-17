@@ -50,15 +50,19 @@ void i2c_scanner() {
     printf("\n>> Scanning done.\n");
 }
 
-esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
+ esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
     esp_err_t err = ESP_OK;
-
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
 
-    i2s_new_channel(&chan_cfg, NULL, rx_handle);
+    err = i2s_new_channel(&chan_cfg, NULL, rx_handle);
+    if(err != ESP_OK) {
+        ESP_LOGE(SENSORS_TAG, "Error creating I2S channel: %s",  esp_err_to_name(err));
+        return err;
+    }
 
     switch (mic_type) {
         case INMP441:
+            ESP_LOGI(SENSORS_TAG, "Initializing INMP441");
             i2s_std_config_t std_cfg = {
                 .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(48000),
                 .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_STEREO),
@@ -78,10 +82,16 @@ esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
 
             err = i2s_channel_init_std_mode(*rx_handle, &std_cfg);
             if(err != ESP_OK) {
+                ESP_LOGE(SENSORS_TAG, "Error initializing I2S channel: %s",  esp_err_to_name(err));
                 return err;
             }
 
             err = i2s_channel_enable(*rx_handle);
+            if(err != ESP_OK) {
+                ESP_LOGE(SENSORS_TAG, "Error enabling I2S channel: %s", esp_err_to_name(err));
+                return err;
+            }
+            break;
         
         default:
             ESP_LOGE(SENSORS_TAG, "Failed to initialize microphone: Unknown hardware");
@@ -91,17 +101,14 @@ esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
     return err;
 }
 
-esp_err_t read_noise_level(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
+ esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle, int* data) {
     esp_err_t err = ESP_OK;
 
-     switch (mic_type) {
-            case INMP441:
-                err = i2s_channel_read(*rx_handle, NULL, 32, 24, 100);
-            
-            default:
-                ESP_LOGE(SENSORS_TAG, "Failed to initialize microphone: Unknown hardware");
-                return ESP_ERR_INVALID_ARG;
-        }
+    //ESP_LOGI(SENSORS_TAG, "Reading noise level");
+    err = i2s_channel_read(*rx_handle, data, 4, NULL, 1000);
+    if(err != ESP_OK) {
+        ESP_LOGE(SENSORS_TAG, "Error reading I2S data: %s",  esp_err_to_name(err));
+    }
 
     return err;
 }
