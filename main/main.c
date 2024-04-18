@@ -37,10 +37,10 @@ void app_main() {
 
     err = mic_setup(INMP441, &rx_handle);
 
-    for(i = 0; i < 100; i++){
+    for(; 1;){
         err = read_noise_level(&rx_handle, &data);
         printf("%d\n", data);
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 
     return;
