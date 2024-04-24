@@ -1,56 +1,26 @@
 #include "sensors_man.h"
 
-esp_err_t i2c_init_sensors() {
-    esp_err_t ret = ESP_OK;
+esp_err_t i2c_init(i2c_master_bus_handle_t* i2c_bus_handle) {
+    esp_err_t err = ESP_OK;
 
-    i2c_config_t conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = I2C_MASTER_SDA_IO,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+    i2c_master_bus_config_t i2c_mst_config = {
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .i2c_port = I2C_SENSORS_PORT,
         .scl_io_num = I2C_MASTER_SCL_IO,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = I2C_MASTER_FREQ_HZ,
+        .sda_io_num = I2C_MASTER_SDA_IO,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
     };
 
-    ret = i2c_param_config(I2C_MASTER_NUM, &conf);
-    if(ret != ESP_OK){
-        ESP_LOGE(SENSORS_TAG, "Setting i2c config failed: %d", ret);
-        return ret;
+    err = i2c_new_master_bus(&i2c_mst_config, i2c_bus_handle);
+    if(err != ESP_OK) {
+        ESP_LOGE(SENSORS_TAG, "Error creating I2C master bus: %d", err);
     }
-
-    ret = i2c_driver_install(I2C_MASTER_NUM, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
-
-    if(ret != ESP_OK){
-        ESP_LOGE(SENSORS_TAG, "i2c_driver_install failed: %d", ret);
-    }
-
-    return ret;
+    
+    return err;
 }
 
-
-void i2c_scanner() {
-    int i;
-    esp_err_t espRc;
-
-    printf(">> I2C scanning ...\n\n");
-    for (i = 3; i < 0x78; i++) {
-        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (i << 1) | I2C_MASTER_WRITE, true);
-        i2c_master_stop(cmd);
-
-        espRc = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-        if (espRc == 0) {
-            printf("Found I2C device at address 0x%02x\n", i);
-        }
-
-        i2c_cmd_link_delete(cmd);
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-    }
-    printf("\n>> Scanning done.\n");
-}
-
- esp_err_t mic_setup(enum Microphone mic_type, i2s_chan_handle_t* rx_handle) {
+esp_err_t mic_setup(Microphone mic_type, i2s_chan_handle_t* rx_handle) {
     esp_err_t err = ESP_OK;
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
 
@@ -65,7 +35,7 @@ void i2c_scanner() {
             ESP_LOGI(SENSORS_TAG, "Initializing INMP441");
             i2s_std_config_t std_cfg = {
                 .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(48000),
-                .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO),
+                .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_24BIT, I2S_SLOT_MODE_MONO),
                 .gpio_cfg = {
                     .mclk = I2S_GPIO_UNUSED,
                     .bclk = GPIO_NUM_4,
@@ -101,11 +71,10 @@ void i2c_scanner() {
     return err;
 }
 
- esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle, int* data) {
+esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle, int32_t* i2s_readraw_buff, size_t* bytes_read) {
     esp_err_t err = ESP_OK;
 
-    //ESP_LOGI(SENSORS_TAG, "Reading noise level");
-    err = i2s_channel_read(*rx_handle, data, 4, NULL, 1000);
+    err = i2s_channel_read(*rx_handle, i2s_readraw_buff, 1024, bytes_read, I2C_MASTER_TIMEOUT_MS);
     if(err != ESP_OK) {
         ESP_LOGE(SENSORS_TAG, "Error reading I2S data: %s",  esp_err_to_name(err));
     }
@@ -126,56 +95,47 @@ esp_err_t mic_shut_down(i2s_chan_handle_t* rx_handle) {
     return err;
 }
 
-esp_err_t init_PmodHYGRO() {
-    esp_err_t ret = ESP_OK;
-    uint8_t data[2];
-    uint8_t reg_addr = 0x00;
+esp_err_t SHT40_init(I2C_Sensor *sht40) {
+    esp_err_t err = ESP_OK;
 
-    ret = i2c_master_write_to_device(0, 0x40, &reg_addr, 1, 10000 / portTICK_PERIOD_MS);
-    if(ret != ESP_OK){
-        ESP_LOGE(SENSORS_TAG, "Initializing PmodHYGRO failed: %d", ret);
+    i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_7,
+        .device_address = 0x44,
+        .scl_speed_hz = I2C_DEFAULT_FREQ,
+    };
+
+    err = i2c_master_bus_add_device(sht40->i2c_bus_handle, &dev_cfg, &sht40->sensor_handle);
+    if(err != ESP_OK){
+        ESP_LOGE(SENSORS_TAG, "Initializing SHT40 failed when adding to bus: %d", err);
     }
 
-    return ret;
+    return err;
 }
 
-esp_err_t PmodHYGRO_read(int *temp, int *hum) {
-    esp_err_t ret = ESP_OK;
-    uint8_t data[4];
-    uint8_t reg_addr = 0x00;
+esp_err_t SHT40_read(I2C_Sensor *sht40, float* temp, float* hum) {
+    esp_err_t err = ESP_OK;
+    uint8_t data[6];
+    uint16_t t_ticks, rh_ticks;
 
-    i2c_master_write_to_device(0, 0x40, &reg_addr, 1, 10000 / portTICK_PERIOD_MS);
-
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-
-    ret = i2c_master_read_from_device(0, 0x40, data, 4, 1000 / portTICK_PERIOD_MS);
-    if (ret != ESP_OK) {
-        ESP_LOGE(SENSORS_TAG, "Reading from PmodHYGRO failed: %d", ret);
-        return ret;
+    err = i2c_master_transmit(sht40->sensor_handle, &sht40->write_data, 1, 10000);
+    if(err != ESP_OK){
+        ESP_LOGE(SENSORS_TAG, "Reading SHT40 failed during write: %d", err);
+        return err;
     }
 
-    uint16_t rawTemp = (data[0] << 8) | data[1];
-    uint16_t rawHum = (data[2] << 8) | data[3];
+    vTaskDelay(500 / portTICK_PERIOD_MS);
 
-    *temp = ((rawTemp / 65536.0) * 165) - 40;
-    *hum = (rawHum / 65536.0) * 100;
-
-    return ret;
-}
-
-esp_err_t PmodTMP3_read(int *temp) {
-    esp_err_t ret = ESP_OK;
-    uint8_t data[1];
-
-    ret = i2c_master_read_from_device(0, 0x48, data, 1, 1000 / portTICK_PERIOD_MS);
-    if (ret != ESP_OK) {
-        ESP_LOGE(SENSORS_TAG, "i2c_master_read_from_device failed: %d", ret);
-        return ret;
+    err = i2c_master_receive(sht40->sensor_handle, data, 6, 10000);
+    if (err != ESP_OK) {
+        ESP_LOGE(SENSORS_TAG, "Reading from SHT40 failed during read: %d", err);
+        return err;
     }
 
-    uint16_t rawTemp = (data[0] << 4) | data[0];
+    t_ticks = data[0] * 256 + data[1];
+    rh_ticks = data[3] * 256 + data[4];
+    
+    *temp = -45 + 175 * t_ticks/65535;
+    *hum = -6 + 125 * rh_ticks/65536;
 
-    *temp = rawTemp/16;
-
-    return ret;
+    return err;
 }

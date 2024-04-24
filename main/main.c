@@ -31,17 +31,21 @@ char ssid_var[256] = "dummy_data";
 char password_var[250] = "dummy_data";
 
 void app_main() {
-    i2s_chan_handle_t rx_handle;
-    esp_err_t err = ESP_OK;
-    int data = 0, i;
+    int i;
+    float temp, hum;
+    i2c_master_bus_handle_t i2c_bus;
+    I2C_Sensor sht40;
+    sht40.write_data = 0xFD;
 
-    err = mic_setup(INMP441, &rx_handle);
+    i2c_init(&i2c_bus);
+
+    sht40.i2c_bus_handle = i2c_bus;
+
+    SHT40_init(&sht40);
 
     for(; 1;){
-        err = read_noise_level(&rx_handle, &data);
-        printf("%d\n", data);
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+        SHT40_read(&sht40, &temp, &hum);
+        printf("Temp: %f Cº       Hum: %f Percent \n", temp, hum);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
-
-    return;
 }
