@@ -104,7 +104,7 @@ esp_err_t SHT40_init(I2C_Sensor *sht40) {
         .scl_speed_hz = I2C_DEFAULT_FREQ,
     };
 
-    err = i2c_master_bus_add_device(sht40->i2c_bus_handle, &dev_cfg, &sht40->sensor_handle);
+    err = i2c_master_bus_add_device(*sht40->i2c_bus_handle, &dev_cfg, &sht40->sensor_handle);
     if(err != ESP_OK){
         ESP_LOGE(SENSORS_TAG, "Initializing SHT40 failed when adding to bus: %d", err);
     }

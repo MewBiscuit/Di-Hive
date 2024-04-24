@@ -39,7 +39,7 @@ void app_main() {
 
     i2c_init(&i2c_bus, 0);
 
-    sht40.i2c_bus_handle = i2c_bus;
+    sht40.i2c_bus_handle = &i2c_bus;
 
     SHT40_init(&sht40);
 

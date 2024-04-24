@@ -25,7 +25,7 @@ typedef enum {
 } Microphone;
 
 typedef struct {
-    i2c_master_bus_handle_t i2c_bus_handle;
+    i2c_master_bus_handle_t* i2c_bus_handle;
     i2c_master_dev_handle_t sensor_handle;
     uint8_t write_data;
 } I2C_Sensor;
