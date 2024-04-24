@@ -1,11 +1,11 @@
 #include "sensors_man.h"
 
-esp_err_t i2c_init(i2c_master_bus_handle_t* i2c_bus_handle) {
+esp_err_t i2c_init(i2c_master_bus_handle_t* i2c_bus_handle, i2c_port_num_t port) {
     esp_err_t err = ESP_OK;
 
     i2c_master_bus_config_t i2c_mst_config = {
         .clk_source = I2C_CLK_SRC_DEFAULT,
-        .i2c_port = I2C_SENSORS_PORT,
+        .i2c_port = port,
         .scl_io_num = I2C_MASTER_SCL_IO,
         .sda_io_num = I2C_MASTER_SDA_IO,
         .glitch_ignore_cnt = 7,

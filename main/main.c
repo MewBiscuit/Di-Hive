@@ -37,7 +37,7 @@ void app_main() {
     I2C_Sensor sht40;
     sht40.write_data = 0xFD;
 
-    i2c_init(&i2c_bus);
+    i2c_init(&i2c_bus, 0);
 
     sht40.i2c_bus_handle = i2c_bus;
 

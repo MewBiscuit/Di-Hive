@@ -11,7 +11,6 @@
 
 #define I2C_MASTER_SCL_IO 22   
 #define I2C_MASTER_SDA_IO 21    
-#define I2C_SENSORS_PORT I2C_NUM_1
 #define I2C_MASTER_NUM I2C_NUM_0
 #define I2C_DEFAULT_FREQ 100000
 #define I2C_MASTER_TX_BUF_DISABLE 0
@@ -31,7 +30,7 @@ typedef struct {
     uint8_t write_data;
 } I2C_Sensor;
 
-esp_err_t i2c_init(i2c_master_bus_handle_t* i2c_bus_handle);
+esp_err_t i2c_init(i2c_master_bus_handle_t* i2c_bus_handle, i2c_port_num_t port);
 
 void i2c_scanner();
 
