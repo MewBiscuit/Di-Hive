@@ -17,6 +17,9 @@
 #include "adc_man.h"
 #include "sensors_man.h"
 
+//External libraries
+#include "ssd1306.h"
+#include "font8x8_basic.h"
 //Logs
 #define TAG "MAIN"
 
@@ -34,10 +37,16 @@ void app_main() {
     int i;
     float temp, hum;
     i2c_master_bus_handle_t i2c_bus;
+    SSD1306_t ssd1306;
     I2C_Sensor sht40;
     sht40.write_data = 0xFD;
 
-    i2c_init(&i2c_bus, 0);
+    i2c_bus_init(&i2c_bus, 1);
+    i2c_master_init(&ssd1306, 33, 32, CONFIG_RESET_GPIO);
+
+	ssd1306_init(&ssd1306, 128, 64);
+    ssd1306_contrast(&ssd1306, 0xff);
+    ssd1306_clear_screen(&ssd1306, false);
 
     sht40.i2c_bus_handle = &i2c_bus;
 

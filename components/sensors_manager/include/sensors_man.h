@@ -30,7 +30,7 @@ typedef struct {
     uint8_t write_data;
 } I2C_Sensor;
 
-esp_err_t i2c_init(i2c_master_bus_handle_t* i2c_bus_handle, i2c_port_num_t port);
+esp_err_t i2c_bus_init(i2c_master_bus_handle_t* i2c_bus_handle, i2c_port_num_t port);
 
 void i2c_scanner();
 

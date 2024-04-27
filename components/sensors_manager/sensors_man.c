@@ -1,6 +1,6 @@
 #include "sensors_man.h"
 
-esp_err_t i2c_init(i2c_master_bus_handle_t* i2c_bus_handle, i2c_port_num_t port) {
+esp_err_t i2c_bus_init(i2c_master_bus_handle_t* i2c_bus_handle, i2c_port_num_t port) {
     esp_err_t err = ESP_OK;
 
     i2c_master_bus_config_t i2c_mst_config = {
