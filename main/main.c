@@ -40,9 +40,10 @@ void app_main() {
     SSD1306_t ssd1306;
     I2C_Sensor sht40;
     sht40.write_data = 0xFD;
+    char hum_display[16], temp_display[16];
 
-    i2c_bus_init(&i2c_bus, 1);
-    i2c_master_init(&ssd1306, 33, 32, CONFIG_RESET_GPIO);
+    i2c_bus_init(&i2c_bus, 1, 27, 14);
+    i2c_master_init(&ssd1306, 32, 33, CONFIG_RESET_GPIO);
 
 	ssd1306_init(&ssd1306, 128, 64);
     ssd1306_contrast(&ssd1306, 0xff);
@@ -54,7 +55,12 @@ void app_main() {
 
     for(; 1;){
         SHT40_read(&sht40, &temp, &hum);
-        printf("Temp: %f Cº       Hum: %f Percent \n", temp, hum);
+        printf("Temp: %f Cº       Hum: %f\n", temp, hum);
+        snprintf(hum_display, 16, "Hum: %.2f", hum);
+        snprintf(hum_display, 16, "Temp: %.2fºC", temp);
+        ssd1306_clear_screen(&ssd1306, false);
+        ssd1306_display_text(&ssd1306, 1, temp_display, 16, false);
+        ssd1306_display_text(&ssd1306, 3, hum_display, 16, false);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

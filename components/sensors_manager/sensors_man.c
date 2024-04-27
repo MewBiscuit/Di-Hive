@@ -1,13 +1,13 @@
 #include "sensors_man.h"
 
-esp_err_t i2c_bus_init(i2c_master_bus_handle_t* i2c_bus_handle, i2c_port_num_t port) {
+esp_err_t i2c_bus_init(i2c_master_bus_handle_t* i2c_bus_handle, i2c_port_num_t port, int sda, int scl) {
     esp_err_t err = ESP_OK;
 
     i2c_master_bus_config_t i2c_mst_config = {
         .clk_source = I2C_CLK_SRC_DEFAULT,
         .i2c_port = port,
-        .scl_io_num = I2C_MASTER_SCL_IO,
-        .sda_io_num = I2C_MASTER_SDA_IO,
+        .scl_io_num = scl,
+        .sda_io_num = sda,
         .glitch_ignore_cnt = 7,
         .flags.enable_internal_pullup = true,
     };
@@ -134,8 +134,8 @@ esp_err_t SHT40_read(I2C_Sensor *sht40, float* temp, float* hum) {
     t_ticks = data[0] * 256 + data[1];
     rh_ticks = data[3] * 256 + data[4];
     
-    *temp = -45 + 175 * t_ticks/65535;
-    *hum = -6 + 125 * rh_ticks/65536;
+    *temp = -45 + 175 * t_ticks/65535.;
+    *hum = -6 + 125 * rh_ticks/65536.;
 
     return err;
 }
