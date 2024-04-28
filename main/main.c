@@ -54,8 +54,9 @@ void app_main() {
 
     for(; 1;) {
         HX711_read(hx771, &weight);
-        printf("%.2f kg\n", weight);
-        snprintf(weight_display, 16, "%.2f kg", weight);
+        printf("%.3f kg\n", weight);
+        snprintf(weight_display, 16, "%.3f kg", weight);
+        ssd1306_clear_line(&ssd1306, 1, false);
         ssd1306_display_text(&ssd1306, 1, weight_display, 16, false);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }

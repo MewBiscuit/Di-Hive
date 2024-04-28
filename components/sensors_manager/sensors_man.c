@@ -176,7 +176,7 @@ esp_err_t HX711_read(Sensor hx771, float *weight) {
     char j;
     unsigned long value, sum = 0;
 
-    for(j = 0; j < 20; j++) {
+    for(j = 0; j < 10; j++) {
         gpio_set_level(hx771.sck, 0);
 
     	while (gpio_get_level(hx771.sda)) {
@@ -198,19 +198,17 @@ esp_err_t HX711_read(Sensor hx771, float *weight) {
             	value++;
     	}
 
-        for(i = 0; i < 1; i++) {	
-    		gpio_set_level(hx771.sck, 1);
-    		esp_rom_delay_us(20);
-    		gpio_set_level(hx771.sck, 0);
-    		esp_rom_delay_us(20);
-    	}	
+		gpio_set_level(hx771.sck, 1);
+		esp_rom_delay_us(20);
+		gpio_set_level(hx771.sck, 0);
+		esp_rom_delay_us(20);
 
     	portENABLE_INTERRUPTS();
 
         sum += value^0x800000;
     }
 
-    *weight = (sum/20.) - 8506000;
+    *weight = (sum/10.) / TARE;
 
     return err;
 }
