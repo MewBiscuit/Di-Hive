@@ -34,33 +34,29 @@ char ssid_var[256] = "dummy_data";
 char password_var[250] = "dummy_data";
 
 void app_main() {
-    int i;
-    float temp, hum;
-    i2c_master_bus_handle_t i2c_bus;
+    float weight;
     SSD1306_t ssd1306;
-    I2C_Sensor sht40;
-    sht40.write_data = 0xFD;
-    char hum_display[16], temp_display[16];
+    char weight_display[16];
 
-    i2c_bus_init(&i2c_bus, 1, 27, 14);
+    Sensor hx771 = {
+        .sda = GPIO_NUM_22,
+        .sck = GPIO_NUM_21
+    };
+
+    HX711_init(hx771);
+
     i2c_master_init(&ssd1306, 32, 33, CONFIG_RESET_GPIO);
-
 	ssd1306_init(&ssd1306, 128, 64);
     ssd1306_contrast(&ssd1306, 0xff);
     ssd1306_clear_screen(&ssd1306, false);
 
-    sht40.i2c_bus_handle = &i2c_bus;
 
-    SHT40_init(&sht40);
 
-    for(; 1;){
-        SHT40_read(&sht40, &temp, &hum);
-        printf("Temp: %f Cº       Hum: %f\n", temp, hum);
-        snprintf(hum_display, 16, "Hum: %.2f", hum);
-        snprintf(hum_display, 16, "Temp: %.2fºC", temp);
-        ssd1306_clear_screen(&ssd1306, false);
-        ssd1306_display_text(&ssd1306, 1, temp_display, 16, false);
-        ssd1306_display_text(&ssd1306, 3, hum_display, 16, false);
+    for(; 1;) {
+        HX711_read(hx771, &weight);
+        printf("%.2f kg\n", weight);
+        snprintf(weight_display, 16, "%.2f kg", weight);
+        ssd1306_display_text(&ssd1306, 1, weight_display, 16, false);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

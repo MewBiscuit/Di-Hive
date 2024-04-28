@@ -101,7 +101,7 @@ esp_err_t SHT40_init(I2C_Sensor *sht40) {
     i2c_device_config_t dev_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_7,
         .device_address = 0x44,
-        .scl_speed_hz = I2C_DEFAULT_FREQ,
+        .scl_speed_hz = I2C_DEFAULT_FREQ
     };
 
     err = i2c_master_bus_add_device(*sht40->i2c_bus_handle, &dev_cfg, &sht40->sensor_handle);
@@ -136,6 +136,81 @@ esp_err_t SHT40_read(I2C_Sensor *sht40, float* temp, float* hum) {
     
     *temp = -45 + 175 * t_ticks/65535.;
     *hum = -6 + 125 * rh_ticks/65536.;
+
+    return err;
+}
+
+esp_err_t HX711_init(Sensor hx771) {
+    esp_err_t err = ESP_OK;
+    
+    gpio_config_t hx771_conf ={
+        .intr_type = GPIO_INTR_DISABLE,
+        .mode = GPIO_MODE_OUTPUT,
+        .pin_bit_mask = (1ULL<<hx771.sck),
+        .pull_down_en = 0,
+        .pull_up_en = 0
+    };
+
+    err = gpio_config(&hx771_conf);
+    if(err != ESP_OK){
+        ESP_LOGE(SENSORS_TAG, "Failed to initialize HX771 when configuring SCK: %d", err);
+        return err;
+    }
+
+    hx771_conf.intr_type = GPIO_INTR_DISABLE;
+    hx771_conf.pin_bit_mask = (1ULL<<hx771.sda);
+    hx771_conf.mode = GPIO_MODE_INPUT;
+    hx771_conf.pull_up_en = 0;
+
+    err = gpio_config(&hx771_conf);
+    if(err != ESP_OK){
+        ESP_LOGE(SENSORS_TAG, "Failed to initialize HX771 when configuring Data input: %d", err);
+    }
+
+    return err;
+}
+
+esp_err_t HX711_read(Sensor hx771, float *weight) {
+    esp_err_t err = ESP_OK;
+    int i;
+    char j;
+    unsigned long value, sum = 0;
+
+    for(j = 0; j < 20; j++) {
+        gpio_set_level(hx771.sck, 0);
+
+    	while (gpio_get_level(hx771.sda)) {
+    		vTaskDelay(10 / portTICK_PERIOD_MS);
+    	}
+
+        value = 0;
+
+        portDISABLE_INTERRUPTS();
+
+        for(i = 0; i < 24 ; i++) {   
+    		gpio_set_level(hx771.sck, 1);
+            esp_rom_delay_us(20);
+            value = value << 1;
+            gpio_set_level(hx771.sck, 0);
+            esp_rom_delay_us(20);
+
+            if(gpio_get_level(hx771.sda))
+            	value++;
+    	}
+
+        for(i = 0; i < 1; i++) {	
+    		gpio_set_level(hx771.sck, 1);
+    		esp_rom_delay_us(20);
+    		gpio_set_level(hx771.sck, 0);
+    		esp_rom_delay_us(20);
+    	}	
+
+    	portENABLE_INTERRUPTS();
+
+        sum += value^0x800000;
+    }
+
+    *weight = (sum/20.) - 8506000;
 
     return err;
 }
