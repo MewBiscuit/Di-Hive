@@ -189,19 +189,19 @@ esp_err_t HX711_read(Sensor hx771, float *weight) {
 
         for(i = 0; i < 24 ; i++) {   
     		gpio_set_level(hx771.sck, 1);
-            esp_rom_delay_us(20);
+            vTaskDelay(20 / portTICK_PERIOD_MS);
             value = value << 1;
             gpio_set_level(hx771.sck, 0);
-            esp_rom_delay_us(20);
+            vTaskDelay(20 / portTICK_PERIOD_MS);
 
             if(gpio_get_level(hx771.sda))
             	value++;
     	}
 
 		gpio_set_level(hx771.sck, 1);
-		esp_rom_delay_us(20);
+		vTaskDelay(20 / portTICK_PERIOD_MS);
 		gpio_set_level(hx771.sck, 0);
-		esp_rom_delay_us(20);
+		vTaskDelay(20 / portTICK_PERIOD_MS);
 
     	portENABLE_INTERRUPTS();
 

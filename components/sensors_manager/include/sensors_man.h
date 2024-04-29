@@ -39,7 +39,6 @@ typedef struct{
     gpio_num_t sck;
 } Sensor;
 
-
 /**
  * @brief Initializes an I2C bus with specified parameters
  * 

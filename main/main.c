@@ -34,30 +34,21 @@ char ssid_var[256] = "dummy_data";
 char password_var[250] = "dummy_data";
 
 void app_main() {
-    float weight;
+    float decibels;
     SSD1306_t ssd1306;
-    char weight_display[16];
-
-    Sensor hx771 = {
-        .sda = GPIO_NUM_22,
-        .sck = GPIO_NUM_21
-    };
-
-    HX711_init(hx771);
+    char dB_display[16];
 
     i2c_master_init(&ssd1306, 32, 33, CONFIG_RESET_GPIO);
 	ssd1306_init(&ssd1306, 128, 64);
     ssd1306_contrast(&ssd1306, 0xff);
     ssd1306_clear_screen(&ssd1306, false);
 
-
-
     for(; 1;) {
-        HX711_read(hx771, &weight);
-        printf("%.3f kg\n", weight);
-        snprintf(weight_display, 16, "%.3f kg", weight);
+        HX711_read(hx771, &decibels);
+        printf("%.3f kg\n", decibels);
+        snprintf(dB_display, 16, "%.1f dB", decibels);
         ssd1306_clear_line(&ssd1306, 1, false);
-        ssd1306_display_text(&ssd1306, 1, weight_display, 16, false);
+        ssd1306_display_text(&ssd1306, 1, dB_display, 16, false);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
