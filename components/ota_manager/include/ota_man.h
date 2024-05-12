@@ -22,10 +22,6 @@ static const char* OTA_TAG = "ota_manager";
 extern const uint8_t server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
 extern const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 
-static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
-
-static esp_err_t _http_client_init_cb(esp_http_client_handle_t http_client);
-
 /**
 * @brief Check for any OTA updates, and if found, updates the Di-Core
 * 

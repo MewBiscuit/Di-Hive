@@ -6,8 +6,6 @@
 //ESP specific libraries
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_err.h"
-#include "esp_log.h"
 #include "esp_sleep.h"
 
 //Homebrewed libraries
@@ -16,6 +14,7 @@
 #include "mqtt_man.h"
 #include "adc_man.h"
 #include "sensors_man.h"
+#include "ota_man.h"
 
 //External libraries
 #include "ssd1306.h"
