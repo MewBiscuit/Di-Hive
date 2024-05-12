@@ -34,7 +34,7 @@ char ssid_var[256] = "dummy_data";
 char password_var[250] = "dummy_data";
 
 void app_main() {
-    float decibels;
+    float decibels = 50.0;
     SSD1306_t ssd1306;
     char dB_display[16];
 
@@ -44,7 +44,6 @@ void app_main() {
     ssd1306_clear_screen(&ssd1306, false);
 
     for(; 1;) {
-        HX711_read(hx771, &decibels);
         printf("%.3f kg\n", decibels);
         snprintf(dB_display, 16, "%.1f dB", decibels);
         ssd1306_clear_line(&ssd1306, 1, false);

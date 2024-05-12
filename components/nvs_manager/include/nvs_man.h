@@ -1,5 +1,5 @@
-#ifndef ESP_NVS_MANAGER
-#define ESP_NVS_MANAGER
+#ifndef NVS_MANAGER
+#define NVS_MANAGER
 
 #include <string.h>
 #include "esp_log.h"
