@@ -14,9 +14,6 @@
 #include "sensors_man.h"
 #include "ota_man.h"
 
-//External libraries
-#include "ssd1306.h"
-#include "font8x8_basic.h"
 //Logs
 #define TAG "MAIN"
 
@@ -31,20 +28,17 @@ char ssid_var[256] = "dummy_data";
 char password_var[250] = "dummy_data";
 
 void app_main() {
-    float decibels = 50.0;
-    SSD1306_t ssd1306;
+    float decibels = 0.0;
     char dB_display[16];
+    //i2s_chan_handle_t rx_handle;
 
-    i2c_master_init(&ssd1306, 32, 33, CONFIG_RESET_GPIO);
-	ssd1306_init(&ssd1306, 128, 64);
-    ssd1306_contrast(&ssd1306, 0xff);
-    ssd1306_clear_screen(&ssd1306, false);
+    mic_setup(INMP441);
+    //printf(">mic:-3000\n>mic:3000");
 
     for(; 1;) {
-        printf("%.3f kg\n", decibels);
+        read_noise_level(&decibels);
+        printf(">mic:%.3f\n", decibels);
         snprintf(dB_display, 16, "%.1f dB", decibels);
-        ssd1306_clear_line(&ssd1306, 1, false);
-        ssd1306_display_text(&ssd1306, 1, dB_display, 16, false);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }

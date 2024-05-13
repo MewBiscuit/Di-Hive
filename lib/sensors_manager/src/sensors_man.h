@@ -11,7 +11,7 @@
 #include "freertos/semphr.h"
 #include "freertos/event_groups.h"
 #include "driver/i2c_master.h"
-#include <driver/i2s_std.h>
+#include <driver/i2s.h>
 #include <driver/gpio.h>
  
 #define I2C_MASTER_NUM I2C_NUM_0
@@ -21,6 +21,7 @@
 #define I2C_MASTER_TIMEOUT_MS 1000
 #define SAMPLE_SIZE 6000
 #define TARE 1
+#define bufferLen 64
 
 #define SENSORS_TAG "SENSORS_MANAGER"
 
@@ -57,22 +58,19 @@ void i2c_scanner();
  * @brief Set up microphone, including I2S protocol and specific hardware
  * 
  * @param mic_type Microphone hardware being used
- * @param rx_handle Handler variable for I2S module on ESP32
  * 
  * @return esp_err_t Error code
 */
-esp_err_t mic_setup(Microphone mic_type, i2s_chan_handle_t* rx_handle);
+esp_err_t mic_setup(Microphone mic_type);
 
 /**
  * @brief Reads the current noise level
  * 
  * @param rx_handle Handler variable for I2S module on ESP32
- * @param i2s_readraw_buff Destination buffer for read data
- * @param bytes_read Pointer to store real amount of read data
  * 
  * @return esp_err_t Error code
 */
-esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle, int32_t* i2s_readraw_buff, size_t* bytes_read);
+esp_err_t read_noise_level(float* noise);
 
 /**
  * @brief Future function intended for recording audio samples of hives for post analysis and model training

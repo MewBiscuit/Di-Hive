@@ -20,11 +20,8 @@ esp_err_t i2c_bus_init(i2c_master_bus_handle_t* i2c_bus_handle, i2c_port_num_t p
     return err;
 }
 
-esp_err_t mic_setup(Microphone mic_type, i2s_chan_handle_t* rx_handle) {
+esp_err_t mic_setup(Microphone mic_type) {
     esp_err_t err = ESP_OK;
-    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_AUTO, I2S_ROLE_MASTER);
-
-    err = i2s_new_channel(&chan_cfg, NULL, rx_handle);
     if(err != ESP_OK) {
         ESP_LOGE(SENSORS_TAG, "Error creating I2S channel: %s",  esp_err_to_name(err));
         return err;
@@ -33,32 +30,34 @@ esp_err_t mic_setup(Microphone mic_type, i2s_chan_handle_t* rx_handle) {
     switch (mic_type) {
         case INMP441:
             ESP_LOGI(SENSORS_TAG, "Initializing INMP441");
-            i2s_std_config_t std_cfg = {
-                .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(48000),
-                .slot_cfg = I2S_STD_MSB_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_24BIT, I2S_SLOT_MODE_MONO),
-                .gpio_cfg = {
-                    .mclk = I2S_GPIO_UNUSED,
-                    .bclk = GPIO_NUM_4,
-                    .ws = GPIO_NUM_5,
-                    .dout = I2S_GPIO_UNUSED,
-                    .din = GPIO_NUM_19,
-                    .invert_flags = {
-                        .mclk_inv = false,
-                        .bclk_inv = false,
-                        .ws_inv = false,
-                    },
-                },
-            };
+              i2s_config_t i2s_config = {
+                .mode = I2S_MODE_MASTER | I2S_MODE_RX,
+                .sample_rate = 44100,
+                .bits_per_sample = I2S_BITS_PER_SAMPLE_24BIT,
+                .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
+                .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+                .intr_alloc_flags = 0,
+                .dma_buf_count = 8,
+                .dma_buf_len = bufferLen,
+                .use_apll = false
+              };
 
-            err = i2s_channel_init_std_mode(*rx_handle, &std_cfg);
+            err = i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
             if(err != ESP_OK) {
-                ESP_LOGE(SENSORS_TAG, "Error initializing I2S channel: %s",  esp_err_to_name(err));
+                ESP_LOGE(SENSORS_TAG, "Error installing I2S channel: %s",  esp_err_to_name(err));
                 return err;
             }
 
-            err = i2s_channel_enable(*rx_handle);
+            i2s_pin_config_t pin_config = {
+                .bck_io_num = GPIO_NUM_4,
+                .ws_io_num = GPIO_NUM_5,
+                .data_out_num = -1,
+                .data_in_num = GPIO_NUM_19
+            };
+
+            i2s_set_pin(I2S_NUM_0, &pin_config);
             if(err != ESP_OK) {
-                ESP_LOGE(SENSORS_TAG, "Error enabling I2S channel: %s", esp_err_to_name(err));
+                ESP_LOGE(SENSORS_TAG, "Error configuring I2S channel pins: %s", esp_err_to_name(err));
                 return err;
             }
             break;
@@ -71,13 +70,27 @@ esp_err_t mic_setup(Microphone mic_type, i2s_chan_handle_t* rx_handle) {
     return err;
 }
 
-esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle, int32_t* i2s_readraw_buff, size_t* bytes_read) {
+esp_err_t read_noise_level(float* noise) {
     esp_err_t err = ESP_OK;
+    int32_t sBuffer[bufferLen];
+    size_t bytesIn;
+    int32_t i, samples_read;
 
-    err = i2s_channel_read(*rx_handle, i2s_readraw_buff, 1024, bytes_read, I2C_MASTER_TIMEOUT_MS);
+    *noise = 0;
+    ESP_LOGI(SENSORS_TAG, "Starting read operation");
+    err = i2s_read(I2S_NUM_0, &sBuffer, bufferLen, &bytesIn, portMAX_DELAY);
     if(err != ESP_OK) {
         ESP_LOGE(SENSORS_TAG, "Error reading I2S data: %s",  esp_err_to_name(err));
+        return err;
     }
+
+    samples_read = bytesIn / sizeof(int32_t);
+
+    for(i = 0; i < samples_read; ++i){
+        *noise += sBuffer[i];
+    }
+
+    *noise /= samples_read;
 
     return err;
 }
@@ -85,12 +98,12 @@ esp_err_t read_noise_level(i2s_chan_handle_t* rx_handle, int32_t* i2s_readraw_bu
 esp_err_t mic_shut_down(i2s_chan_handle_t* rx_handle) {
     esp_err_t err = ESP_OK;
 
-    err = i2s_channel_disable(*rx_handle);
+    //err = i2s_channel_disable(*rx_handle);
     if(err != ESP_OK) {
         return err;
     }
 
-    err = i2s_del_channel(*rx_handle);
+    //err = i2s_del_channel(*rx_handle);
 
     return err;
 }
