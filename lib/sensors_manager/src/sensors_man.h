@@ -67,7 +67,7 @@ esp_err_t mic_setup(Microphone mic_type);
 /**
  * @brief Reads the current noise level
  * 
- * @param rx_handle Handler variable for I2S module on ESP32
+ * @param noise RMS of sound from read samples
  * 
  * @return esp_err_t Error code
 */

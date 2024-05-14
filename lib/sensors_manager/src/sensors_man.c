@@ -87,7 +87,6 @@ esp_err_t read_noise_level(float* noise) {
     samples_read = bytesIn / sizeof(int32_t);
 
     //RMS for dB measuring
-
     for(i = 0; i < samples_read; ++i){
         *noise += pow(sBuffer[i], 2);
     }
