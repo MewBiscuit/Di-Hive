@@ -28,6 +28,7 @@ static const char *WIFI_TAG = "wifi_manager";
 #define ESP_MAXIMUM_RETRY 10
 
 static EventGroupHandle_t s_wifi_event_group;
+EventBits_t bits;
 static int s_retry_num = 0;
 
 /**
@@ -57,10 +58,11 @@ esp_err_t start_provisioning();
 /**
  * @brief Check if the device has been provisioned.
  * 
- * @return true 
- * @return false 
+ * @param provisioned Pointer to boolean variable
+ * 
+ * @return ESP Error code
  */
-bool is_provisioned();
+bool is_provisioned(bool* provisioned);
 
 /**
  * @brief Set up an access point with the given SSID and password.

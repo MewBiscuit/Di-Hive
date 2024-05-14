@@ -1,30 +1,124 @@
 #include "wifi_man.h"
 
-static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-    if(event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
-        esp_wifi_connect();
+//General
+void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
+    static int retries = 0;
+    if (event_base == WIFI_PROV_EVENT) {
+        switch (event_id) {
+            case WIFI_PROV_START:
+                ESP_LOGI(WIFI_TAG, "Provisioning started");
+                break;
+            case WIFI_PROV_CRED_RECV: {
+                wifi_sta_config_t *wifi_sta_cfg = (wifi_sta_config_t *)event_data;
+                ESP_LOGI(WIFI_TAG, "Received Wi-Fi credentials"
+                         "\n\tSSID     : %s\n\tPassword : %s",
+                         (const char *) wifi_sta_cfg->ssid,
+                         (const char *) wifi_sta_cfg->password);
+                //save ssid and password to char[] and pass to connect_ap
+                char ssid[256];
+                char password[256];
+                strncpy(ssid, (const char *)wifi_sta_cfg->ssid, sizeof(ssid) - 1);
+                ssid[sizeof(ssid) - 1] = '\0';
+                strncpy(password, (const char *)wifi_sta_cfg->password, sizeof(password) - 1);
+                password[sizeof(password) - 1] = '\0';
+                ESP_LOGI(WIFI_TAG, "Saving credentials to NVS");
+                ESP_LOGI(WIFI_TAG, "SSID: %s", ssid);
+                ESP_LOGI(WIFI_TAG, "Password: %s", password);
+                write_string_to_nvs("ssid", ssid);
+                write_string_to_nvs("password", password);
+                break;
+            }
+            case WIFI_PROV_CRED_FAIL: {
+                wifi_prov_sta_fail_reason_t *reason = (wifi_prov_sta_fail_reason_t *)event_data;
+                ESP_LOGE(WIFI_TAG, "Provisioning failed!\n\tReason : %s"
+                         "\n\tPlease reset to factory and retry provisioning",
+                         (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
+                         "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
+                wifi_prov_mgr_reset_sm_state_on_failure();
+                break;
+            }
+            case WIFI_PROV_CRED_SUCCESS:
+                ESP_LOGI(WIFI_TAG, "Provisioning successful");
+                retries = 0;
+                break;
+            case WIFI_PROV_END:
+                /* De-initialize manager once provisioning is finished */
+                wifi_prov_mgr_deinit();
+                break;
+            default:
+                break;
+        }
     }
-    
+
+    else if (event_id == WIFI_EVENT_AP_STACONNECTED) {
+        wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
+        ESP_LOGI(WIFI_TAG, "station " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
+    }
+
+    else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
+        wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *)event_data;
+        ESP_LOGI(WIFI_TAG, "station " MACSTR " leave, AID=%d", MAC2STR(event->mac), event->aid);
+    }
+
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
+        esp_wifi_connect();
+
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if(s_retry_num < ESP_MAXIMUM_RETRY) {
+        if (s_retry_num < ESP_MAXIMUM_RETRY) {
             esp_wifi_connect();
             s_retry_num++;
-            ESP_LOGI(WIFI_TAG, "retry to connect to the AP");
-        } 
-        
-        else {
-            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+            ESP_LOGI(WIFI_TAG, "Retrying to connect to AP");
         }
 
-        ESP_LOGI(WIFI_TAG,"connect to the AP fail");
-    } 
-    
-    else if(event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(WIFI_TAG, "Got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        else
+            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+
+        ESP_LOGI(WIFI_TAG, "Connection to the AP fail");
+    }
+
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+        ESP_LOGI(WIFI_TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
+}
+
+esp_err_t wifi_init() {
+    esp_err_t err = ESP_OK;
+    int i;
+
+    for (i = 0; i < 10 && err != ESP_OK; i++){
+        err = init_nvs();
+    }
+
+    if(err != ESP_OK){
+        ESP_LOGE(WIFI_TAG, "Couldn't fix error initializing NVS");
+        return err;
+    }
+
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_netif_create_default_wifi_sta();
+    esp_netif_create_default_wifi_ap();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+
+    err = esp_wifi_init(&cfg);
+    if (err != ESP_OK) {
+        ESP_LOGI(WIFI_TAG, "Error %d initializing wifi!", err);
+    }
+
+    return err;
+}
+
+esp_err_t wifi_release() {
+    esp_err_t err = ESP_OK;
+    ESP_ERROR_CHECK(esp_wifi_disconnect());
+    ESP_ERROR_CHECK(esp_wifi_stop());
+    ESP_ERROR_CHECK(esp_wifi_deinit());
+    ESP_ERROR_CHECK(esp_event_loop_delete_default());
+    return err;
 }
 
 //Wifi STA
@@ -137,6 +231,7 @@ esp_err_t custom_prov_data_handler(uint32_t session_id, const uint8_t *inbuf, ss
 
 esp_err_t start_provisioning(char *ssid, char *password) {
     esp_err_t err = ESP_OK;
+
     err = esp_event_handler_instance_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL, NULL);
     if(err != ESP_OK) {
         ESP_LOGE(WIFI_TAG, "Error registering event handler for WIFI_PROV_EVENT: %s", esp_err_to_name(err));
@@ -145,7 +240,7 @@ esp_err_t start_provisioning(char *ssid, char *password) {
 
     wifi_prov_mgr_config_t config = {
         .scheme = wifi_prov_scheme_softap,
-        .scheme_event_handler = WIFI_PROV_EVENT
+        .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
     };
 
     err = wifi_prov_mgr_init(config);
@@ -169,10 +264,15 @@ esp_err_t start_provisioning(char *ssid, char *password) {
     return err;
 }
 
-bool is_provisioned() {
-    bool provisioned = false;
-    ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
-    return provisioned;
+bool is_provisioned(bool* provisioned) {
+    esp_err_t err = ESP_OK;
+    
+    err = wifi_prov_mgr_is_provisioned(provisioned);
+    if(err == ESP_FAIL) {
+        ESP_LOGE(WIFI_TAG, "Error checking if device is provisioned: %s", esp_err_to_name(err));
+    }
+
+    return err;
 }
 
 esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connections) {
@@ -207,10 +307,6 @@ esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connection
                 .max_connection = *max_connections,
                 .beacon_interval = 200,
                 .authmode = WIFI_AUTH_WPA2_PSK,
-                .pmf_cfg =
-                    {
-                        .required = true,
-                    },
             },
     };
 
@@ -230,118 +326,4 @@ esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connection
     start_provisioning(ssid, password);
 
     return ESP_OK;
-}
-
-//General
-esp_err_t wifi_init() {
-    esp_err_t err = ESP_OK;
-
-    err = init_nvs();
-    ESP_ERROR_CHECK(err);
-
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
-    esp_netif_create_default_wifi_ap();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-
-    err = esp_wifi_init(&cfg);
-    if (err != ESP_OK) {
-        ESP_LOGI(WIFI_TAG, "Error (%s) initializing wifi!", esp_err_to_name(err));
-    }
-
-    return err;
-}
-
-esp_err_t wifi_release() {
-    esp_err_t err = ESP_OK;
-    ESP_ERROR_CHECK(esp_wifi_disconnect());
-    ESP_ERROR_CHECK(esp_wifi_stop());
-    ESP_ERROR_CHECK(esp_wifi_deinit());
-    ESP_ERROR_CHECK(esp_event_loop_delete_default());
-    return err;
-}
-
-void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-    static int retries = 0;
-    if (event_base == WIFI_PROV_EVENT) {
-        switch (event_id) {
-            case WIFI_PROV_START:
-                ESP_LOGI(WIFI_TAG, "Provisioning started");
-                break;
-            case WIFI_PROV_CRED_RECV: {
-                wifi_sta_config_t *wifi_sta_cfg = (wifi_sta_config_t *)event_data;
-                ESP_LOGI(WIFI_TAG, "Received Wi-Fi credentials"
-                         "\n\tSSID     : %s\n\tPassword : %s",
-                         (const char *) wifi_sta_cfg->ssid,
-                         (const char *) wifi_sta_cfg->password);
-                //save ssid and password to char[] and pass to connect_ap
-                char ssid[256];
-                char password[256];
-                strncpy(ssid, (const char *)wifi_sta_cfg->ssid, sizeof(ssid) - 1);
-                ssid[sizeof(ssid) - 1] = '\0';
-                strncpy(password, (const char *)wifi_sta_cfg->password, sizeof(password) - 1);
-                password[sizeof(password) - 1] = '\0';
-                ESP_LOGI(WIFI_TAG, "Saving credentials to NVS");
-                ESP_LOGI(WIFI_TAG, "SSID: %s", ssid);
-                ESP_LOGI(WIFI_TAG, "Password: %s", password);
-                write_string_to_nvs("ssid", ssid);
-                write_string_to_nvs("password", password);
-                break;
-            }
-            case WIFI_PROV_CRED_FAIL: {
-                wifi_prov_sta_fail_reason_t *reason = (wifi_prov_sta_fail_reason_t *)event_data;
-                ESP_LOGE(WIFI_TAG, "Provisioning failed!\n\tReason : %s"
-                         "\n\tPlease reset to factory and retry provisioning",
-                         (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
-                         "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
-                wifi_prov_mgr_reset_sm_state_on_failure();
-                break;
-            }
-            case WIFI_PROV_CRED_SUCCESS:
-                ESP_LOGI(WIFI_TAG, "Provisioning successful");
-                retries = 0;
-                break;
-            case WIFI_PROV_END:
-                /* De-initialize manager once provisioning is finished */
-                wifi_prov_mgr_deinit();
-                break;
-            default:
-                break;
-        }
-    }
-
-    else if (event_id == WIFI_EVENT_AP_STACONNECTED) {
-        wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
-        ESP_LOGI(WIFI_TAG, "station " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
-    }
-
-    else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
-        wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *)event_data;
-        ESP_LOGI(WIFI_TAG, "station " MACSTR " leave, AID=%d", MAC2STR(event->mac), event->aid);
-    }
-
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
-        esp_wifi_connect();
-
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (s_retry_num < ESP_MAXIMUM_RETRY) {
-            esp_wifi_connect();
-            s_retry_num++;
-            ESP_LOGI(WIFI_TAG, "Retrying to connect to AP");
-        }
-
-        else
-            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-
-        ESP_LOGI(WIFI_TAG, "Connection to the AP fail");
-    }
-
-    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        ESP_LOGI(WIFI_TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
-        s_retry_num = 0;
-        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-    }
 }
