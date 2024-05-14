@@ -70,6 +70,6 @@ esp_err_t post_text_data(char *key, char *value, char *target_path, esp_mqtt_cli
  * 
  * @return esp_err_t Error code
 */
-esp_err_t post_numerical_data(char *key, int *value, char *target_path, esp_mqtt_client_handle_t client);
+esp_err_t post_numerical_data(char *key, float *value, char *target_path, esp_mqtt_client_handle_t client);
 
 #endif

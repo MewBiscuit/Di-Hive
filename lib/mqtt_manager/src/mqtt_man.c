@@ -101,11 +101,10 @@ esp_err_t post_text_data(char *key, char *value, char *target_path, esp_mqtt_cli
     return err;
 }
 
-esp_err_t post_numerical_data(char *key, int *value, char *target_path, esp_mqtt_client_handle_t client) {
+esp_err_t post_numerical_data(char *key, float *value, char *target_path, esp_mqtt_client_handle_t client) {
     esp_err_t err = ESP_OK;
     
     cJSON *root = cJSON_CreateObject();
-    printf("key: %s, value: %d", key, *value);
     cJSON_AddNumberToObject(root, key, *value);
     char *post_data = cJSON_PrintUnformatted(root);
     esp_mqtt_client_enqueue(client, target_path, post_data, 0, 1, 0, true);
