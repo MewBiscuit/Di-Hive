@@ -1,20 +1,27 @@
 #include "sensors_man.h"
 
-esp_err_t i2c_bus_init(i2c_master_bus_handle_t* i2c_bus_handle, i2c_port_num_t port, int sda, int scl) {
+esp_err_t i2c_setup(i2c_port_t port, i2c_mode_t mode, gpio_num_t scl, gpio_num_t sda, uint32_t clk_freq) {
     esp_err_t err = ESP_OK;
 
-    i2c_master_bus_config_t i2c_mst_config = {
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .i2c_port = port,
-        .scl_io_num = scl,
+    i2c_config_t conf = {
+        .mode = mode,
         .sda_io_num = sda,
-        .glitch_ignore_cnt = 7,
-        .flags.enable_internal_pullup = true,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_io_num = scl,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = clk_freq
     };
 
-    err = i2c_new_master_bus(&i2c_mst_config, i2c_bus_handle);
+    err = i2c_param_config(port, &conf);
     if(err != ESP_OK) {
-        ESP_LOGE(SENSORS_TAG, "Error creating I2C master bus: %d", err);
+        ESP_LOGE(SENSORS_TAG, "Error configuring I2C driver: %d", err);
+        return err;
+    }
+    
+    err = i2c_driver_install(port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
+    if(err != ESP_OK) {
+        ESP_LOGE(SENSORS_TAG, "Error installing I2C driver: %d", err);
+        return err;
     }
     
     return err;
@@ -70,7 +77,7 @@ esp_err_t mic_setup(Microphone mic_type) {
     return err;
 }
 
-esp_err_t read_noise_level(float* noise) {
+esp_err_t read_audio(float* noise) {
     esp_err_t err = ESP_OK;
     int32_t sBuffer[bufferLen];
     size_t bytesIn;
@@ -97,57 +104,23 @@ esp_err_t read_noise_level(float* noise) {
     return err;
 }
 
-esp_err_t mic_shut_down(i2s_chan_handle_t* rx_handle) {
+
+esp_err_t SHT40_read(uint8_t* addr, float* temp, float* hum) {
     esp_err_t err = ESP_OK;
-
-    //err = i2s_channel_disable(*rx_handle);
-    if(err != ESP_OK) {
-        return err;
-    }
-
-    //err = i2s_del_channel(*rx_handle);
-
-    return err;
-}
-
-esp_err_t SHT40_init(I2C_Sensor *sht40) {
-    esp_err_t err = ESP_OK;
-
-    i2c_device_config_t dev_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_7,
-        .device_address = 0x44,
-        .scl_speed_hz = I2C_DEFAULT_FREQ
-    };
-
-    err = i2c_master_bus_add_device(*sht40->i2c_bus_handle, &dev_cfg, &sht40->sensor_handle);
-    if(err != ESP_OK){
-        ESP_LOGE(SENSORS_TAG, "Initializing SHT40 failed when adding to bus: %d", err);
-    }
-
-    return err;
-}
-
-esp_err_t SHT40_read(I2C_Sensor *sht40, float* temp, float* hum) {
-    esp_err_t err = ESP_OK;
-    uint8_t data[6];
+    uint8_t r_data[6];
+    uint8_t w_data = 0xFD;
     uint16_t t_ticks, rh_ticks;
-
-    err = i2c_master_transmit(sht40->sensor_handle, &sht40->write_data, 1, 10000);
-    if(err != ESP_OK){
-        ESP_LOGE(SENSORS_TAG, "Reading SHT40 failed during write: %d", err);
-        return err;
-    }
 
     vTaskDelay(500 / portTICK_PERIOD_MS);
 
-    err = i2c_master_receive(sht40->sensor_handle, data, 6, 10000);
+    err = i2c_master_write_read_device(I2C_MASTER_NUM, 0x44, w_data, sizeof(w_data), r_data, sizeof(r_data), I2C_MASTER_TIMEOUT_MS / portTICK_RATE_MS);
     if (err != ESP_OK) {
-        ESP_LOGE(SENSORS_TAG, "Reading from SHT40 failed during read: %d", err);
+        ESP_LOGE(SENSORS_TAG, "Reading from SHT40 failed: %d", err);
         return err;
     }
 
-    t_ticks = data[0] * 256 + data[1];
-    rh_ticks = data[3] * 256 + data[4];
+    t_ticks = r_data[0] * 256 + r_data[1];
+    rh_ticks = r_data[3] * 256 + r_data[4];
     
     *temp = -45 + 175 * t_ticks/65535.;
     *hum = -6 + 125 * rh_ticks/65536.;
