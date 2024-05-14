@@ -1,8 +1,3 @@
-//Standard libraries
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
-
 //ESP specific libraries
 #include "esp_sleep.h"
 

@@ -22,14 +22,13 @@
 #include <wifi_provisioning/scheme_softap.h>
 
 static const char *WIFI_TAG = "wifi_manager";
-static const char *STA_TAG = "wifi_man_sta";
-static const char *AP_TAG = "wifi_man_ap";
 
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 #define ESP_MAXIMUM_RETRY 10
 
 static EventGroupHandle_t s_wifi_event_group;
+static int s_retry_num = 0;
 
 /**
  * @brief Connect to an access point with the given SSID and password.
