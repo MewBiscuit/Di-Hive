@@ -15,7 +15,6 @@
 #include <driver/i2s.h>
 #include <driver/gpio.h>
 
-#define I2C_MASTER_NUM I2C_NUM_0
 #define I2C_DEFAULT_FREQ 100000
 #define I2C_MASTER_TX_BUF_DISABLE 0
 #define I2C_MASTER_RX_BUF_DISABLE 0
@@ -85,7 +84,7 @@ esp_err_t read_audio(float* noise);
  * 
  * @return esp_err_t Error code
 */
-esp_err_t SHT40_read(uint8_t* addr, float* temp, float* hum);
+esp_err_t SHT40_read(i2c_port_t port, float* temp, float* hum);
 
 /**
  * @brief Initialize HX711 sensor with clock, data, channel and gain factor

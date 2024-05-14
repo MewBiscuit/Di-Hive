@@ -105,7 +105,7 @@ esp_err_t read_audio(float* noise) {
 }
 
 
-esp_err_t SHT40_read(uint8_t* addr, float* temp, float* hum) {
+esp_err_t SHT40_read(i2c_port_t port, float* temp, float* hum) {
     esp_err_t err = ESP_OK;
     uint8_t r_data[6];
     uint8_t w_data = 0xFD;
@@ -113,7 +113,7 @@ esp_err_t SHT40_read(uint8_t* addr, float* temp, float* hum) {
 
     vTaskDelay(500 / portTICK_PERIOD_MS);
 
-    err = i2c_master_write_read_device(I2C_MASTER_NUM, 0x44, w_data, sizeof(w_data), r_data, sizeof(r_data), I2C_MASTER_TIMEOUT_MS / portTICK_RATE_MS);
+    err = i2c_master_write_read_device(port, 0x44, w_data, sizeof(w_data), r_data, sizeof(r_data), I2C_MASTER_TIMEOUT_MS / portTICK_RATE_MS);
     if (err != ESP_OK) {
         ESP_LOGE(SENSORS_TAG, "Reading from SHT40 failed: %d", err);
         return err;
