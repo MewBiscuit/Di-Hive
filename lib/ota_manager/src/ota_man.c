@@ -1,40 +1,5 @@
 #include "ota_man.h"
 
-
-static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
-    if (event_base == ESP_HTTPS_OTA_EVENT) {
-        switch (event_id) {
-            case ESP_HTTPS_OTA_START:
-                ESP_LOGI(OTA_TAG, "OTA started");
-                break;
-            case ESP_HTTPS_OTA_CONNECTED:
-                ESP_LOGI(OTA_TAG, "Connected to server");
-                break;
-            case ESP_HTTPS_OTA_GET_IMG_DESC:
-                ESP_LOGI(OTA_TAG, "Reading Image Description");
-                break;
-            case ESP_HTTPS_OTA_VERIFY_CHIP_ID:
-                ESP_LOGI(OTA_TAG, "Verifying chip id of new image: %d", *(esp_chip_id_t *)event_data);
-                break;
-            case ESP_HTTPS_OTA_DECRYPT_CB:
-                ESP_LOGI(OTA_TAG, "Callback to decrypt function");
-                break;
-            case ESP_HTTPS_OTA_WRITE_FLASH:
-                ESP_LOGD(OTA_TAG, "Writing to flash: %d written", *(int *)event_data);
-                break;
-            case ESP_HTTPS_OTA_UPDATE_BOOT_PARTITION:
-                ESP_LOGI(OTA_TAG, "Boot partition updated. Next Partition: %d", *(esp_partition_subtype_t *)event_data);
-                break;
-            case ESP_HTTPS_OTA_FINISH:
-                ESP_LOGI(OTA_TAG, "OTA finish");
-                break;
-            case ESP_HTTPS_OTA_ABORT:
-                ESP_LOGI(OTA_TAG, "OTA abort");
-                break;
-        }
-    }
-}
-
 static esp_err_t validate_image_header(esp_app_desc_t *new_app_info){
     if (new_app_info == NULL) {
         return ESP_ERR_INVALID_ARG;
