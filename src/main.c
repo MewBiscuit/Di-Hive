@@ -28,16 +28,21 @@ char ssid_var[256] = "dummy_data";
 char password_var[250] = "dummy_data";
 
 void app_main() {
-    float decibels = 0.0;
+    float decibels = 0.0, average = 0;
     char dB_display[16];
-    //i2s_chan_handle_t rx_handle;
+    int i;
 
     mic_setup(INMP441);
-    //printf(">mic:-3000\n>mic:3000");
 
     for(; 1;) {
-        read_noise_level(&decibels);
-        printf(">mic:%.3f\n", decibels);
+        for(i = 0; i < 15; i++){
+            read_noise_level(&decibels);
+            printf(">raw:%.3f\n", decibels);
+            average += decibels;
+        }
+        average /= 15;
+        decibels = (20 * log(average/420426)) + 14;
+        printf(">decibels:%.3f\n", decibels);
         snprintf(dB_display, 16, "%.1f dB", decibels);
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "esp_err.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -75,7 +76,7 @@ esp_err_t read_noise_level(float* noise);
 /**
  * @brief Future function intended for recording audio samples of hives for post analysis and model training
  * 
- * @param rx_handle Handler variable for I2S module on ESP32
+ * @param noise Average of sound from read samples
  * 
  * @return esp_err_t Error code
 */
