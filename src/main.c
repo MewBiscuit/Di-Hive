@@ -33,7 +33,7 @@ void app_main() {
     float sound = 0, temp_in = 0, temp_out = 0, hum_in = 0, hum_out = 0, weight = 0;
     char flag_local_data;
     int i;
-    Sensor hx711 = {.sda = GPIO_NUM_33, .sck = GPIO_NUM_35};
+    Sensor hx711 = {.sda = GPIO_NUM_33, .sck = GPIO_NUM_14};
     esp_mqtt_client_handle_t tb_client;
     esp_err_t err = ESP_OK;
 
@@ -57,7 +57,7 @@ void app_main() {
     }
 
     i2c_setup(I2C_NUM_0, I2C_MODE_MASTER, GPIO_NUM_22, GPIO_NUM_21, I2C_DEFAULT_FREQ);
-    i2c_setup(I2C_NUM_1, I2C_MODE_MASTER, GPIO_NUM_12, GPIO_NUM_27, I2C_DEFAULT_FREQ);
+    i2c_setup(I2C_NUM_1, I2C_MODE_MASTER, GPIO_NUM_26, GPIO_NUM_27, I2C_DEFAULT_FREQ);
     mic_setup(INMP441);
     HX711_init(hx711);
 
@@ -74,20 +74,27 @@ void app_main() {
 
     //TODO: Transform to Task
     while (err != ESP_OK) {
-        ESP_LOGI(TAG, "Error connecting to AP!: %d", err);
         is_provisioned(&provisioned);
+        printf("Checked if provisioned\n");
         for(;!provisioned;) {
             is_provisioned(&provisioned);
+            printf("Checked if provisioned in loop\n");
             //Read sensor data
             SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
+            printf("Read SHT40 1\n");
             SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
+            printf("Read SHT40 2\n");
             read_audio(&sound);
+            printf("Read mic\n");
             HX711_read(hx711, &weight);
+            printf("Read weight\n");
 
             //Save data to SD card
             //time(&stamp);
             //snprintf(data, MAX_CHAR_SIZE, "{'ts':%lld, 'values':{'%s':%d, '%s':%d, '%s':%d, '%s':%d, '%s':%d}}", stamp, "temperature_out", temp_out,
             //"temperature_in", temp_in, "humidity_in", hum_in, "noise", noise, "weight", weight);
+
+            printf("{'%s':%2.f, '%s':%2.f, '%s':%2.f, '%s':%2.f, '%s':%2.f, '%s':%2.f}}\n", "temperature_out", temp_out, "temperature_in", temp_in, "humidity_in", hum_in, "humidity_out", hum_out, "sound", sound, "weight", weight);
 
             //Can't send to sleep in order to keep prov server running
             vTaskDelay(30000 / portTICK_PERIOD_MS);

@@ -84,7 +84,6 @@ esp_err_t read_audio(float* noise) {
     int32_t i, samples_read;
 
     *noise = 0;
-    ESP_LOGI(SENSORS_TAG, "Starting read operation");
     err = i2s_read(I2S_NUM_0, &sBuffer, bufferLen, &bytesIn, portMAX_DELAY);
     if(err != ESP_OK) {
         ESP_LOGE(SENSORS_TAG, "Error reading I2S data: %s",  esp_err_to_name(err));
@@ -111,9 +110,16 @@ esp_err_t SHT40_read(i2c_port_t port, float* temp, float* hum) {
     uint8_t w_data = 0xFD;
     uint16_t t_ticks, rh_ticks;
 
-    vTaskDelay(500 / portTICK_PERIOD_MS);
 
-    err = i2c_master_write_read_device(port, 0x44, w_data, sizeof(w_data), r_data, sizeof(r_data), I2C_MASTER_TIMEOUT_MS / portTICK_RATE_MS);
+    err = i2c_master_write_to_device(port, 0x44, &w_data, sizeof(w_data), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    if (err != ESP_OK) {
+        ESP_LOGE(SENSORS_TAG, "Reading from SHT40 failed: %d", err);
+        return err;
+    }
+
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+
+    err = i2c_master_read_from_device(port, 0x44, r_data, sizeof(r_data), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
     if (err != ESP_OK) {
         ESP_LOGE(SENSORS_TAG, "Reading from SHT40 failed: %d", err);
         return err;

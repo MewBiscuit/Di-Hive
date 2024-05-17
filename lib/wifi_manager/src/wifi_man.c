@@ -2,7 +2,6 @@
 
 //General
 void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-    static int retries = 0;
     if (event_base == WIFI_PROV_EVENT) {
         switch (event_id) {
             case WIFI_PROV_START:
@@ -39,7 +38,6 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
             }
             case WIFI_PROV_CRED_SUCCESS:
                 ESP_LOGI(WIFI_TAG, "Provisioning successful");
-                retries = 0;
                 break;
             case WIFI_PROV_END:
                 /* De-initialize manager once provisioning is finished */
@@ -179,12 +177,12 @@ esp_err_t connect_ap(const char *ssid, const char *password) {
         return err;
     }
 
-    ESP_LOGI(WIFI_TAG, "Finished setting up ESP as wifi station");
+    ESP_LOGI(WIFI_TAG, "Finished setting up ESP WiFi module as Station");
 
     bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
 
     if(bits & WIFI_CONNECTED_BIT)
-        ESP_LOGI(WIFI_TAG, "Connected to ap with SSID:%s", ssid);
+        ESP_LOGI(WIFI_TAG, "Connected to AP with SSID:%s", ssid);
 
     else if(bits & WIFI_FAIL_BIT) {
         ESP_LOGI(WIFI_TAG, "Failed to connect to SSID:%s", ssid);
@@ -269,7 +267,7 @@ bool is_provisioned(bool* provisioned) {
     
     err = wifi_prov_mgr_is_provisioned(provisioned);
     if(err == ESP_FAIL) {
-        ESP_LOGE(WIFI_TAG, "Error checking if device is provisioned: %s", esp_err_to_name(err));
+        ESP_LOGE(WIFI_TAG, "Error checking if device is provisioned: %d", err);
     }
 
     return err;
