@@ -21,24 +21,112 @@ const int port = 1883;
 char ssid_var[256] = "dummy_data";
 char password_var[250] = "dummy_data";
 
-//WiFi vars
+//WiFi
 bool provisioned = false;
 int max_connections = 4;
 int channel = 1;
 
+//Telemetry
+esp_mqtt_client_handle_t tb_client;
+
+//FreeRTOS
+#define STACK_SIZE 200
+StaticTask_t xTaskBuffer;
+StackType_t xStack[STACK_SIZE];
+
+// Weight reading, saving, and telemetry sending task
+void weightTask(void* pvParameters) {
+    float weight = 0;
+    time_t stamp;
+    Sensor hx711 = {.sda = GPIO_NUM_33, .sck = GPIO_NUM_14};
+    int ms_periodicity = 600000;
+
+    HX711_init(hx711);
+
+    for(;;){
+        for(;provisioned;) {
+            HX711_read(hx711, &weight);
+            post_numerical_data("weight", &weight, TOPIC, tb_client);
+            vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
+        }
+
+        for(;!provisioned;){
+            HX711_read(hx711, &weight);
+            //TODO: save to SD
+            vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
+        }
+        //TODO: dump sdcard data and free space
+    }
+}
+
+//Task for sht40 sensor reading, saving and telemetry sending
+//TODO: separate inside and outside components into 2 tasks
+void ambientVarsTask (void* pvParameters) {
+    float temp_in = 0, temp_out = 0, hum_in = 0, hum_out = 0;
+    time_t stamp;
+    int ms_periodicity = 30000;
+
+    i2c_setup(I2C_NUM_0, I2C_MODE_MASTER, GPIO_NUM_22, GPIO_NUM_21, I2C_DEFAULT_FREQ);
+    i2c_setup(I2C_NUM_1, I2C_MODE_MASTER, GPIO_NUM_26, GPIO_NUM_27, I2C_DEFAULT_FREQ);
+
+    for(;;){
+        for(;provisioned;) {
+            SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
+            SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
+            post_numerical_data("temperature_in", &temp_in, TOPIC, tb_client);
+            post_numerical_data("humidity_in", &hum_in, TOPIC, tb_client);
+            post_numerical_data("temperature_out", &temp_out, TOPIC, tb_client);
+            post_numerical_data("humidity_out", &hum_out, TOPIC, tb_client);
+            vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
+        }
+
+        for(;!provisioned;){
+            SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
+            SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
+            //TODO: save to SD
+            vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
+        }
+
+        //TODO: dump sdcard data and free space
+    }
+}
+
+void soundTask(void* pvParameters) {
+    float sound = 0;
+    time_t stamp;
+    int ms_periodicity = 10000;
+
+    mic_setup(INMP441);
+    
+    for(;;){
+        for(;provisioned;) {
+            read_audio(&sound);
+            post_numerical_data("sound", &sound, TOPIC, tb_client);
+            vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
+        }
+
+        for(;!provisioned;){
+            read_audio(&sound);
+            //TODO: save to SD
+            vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
+        }
+        //TODO: dump sdcard data and free space
+    }
+}
+
+
 //TODO: Implement all tasks of system, including OTA and telemetry
 
-
 void app_main() {
-    float sound = 0, temp_in = 0, temp_out = 0, hum_in = 0, hum_out = 0, weight = 0;
+    float sound = 0, temp_in = 0, temp_out = 0, hum_in = 0, hum_out = 0;
     char flag_local_data;
     int i;
-    Sensor hx711 = {.sda = GPIO_NUM_33, .sck = GPIO_NUM_14};
-    esp_mqtt_client_handle_t tb_client;
     esp_err_t err = ESP_OK;
+    TaskHandle_t weightTaskHandle = NULL;
 
     for(i = 0; i < 10 && init_nvs() != ESP_OK; i++){
         ESP_LOGE(TAG, "Could not initialize nvs: %d", err);
+        esp_restart();
     }
 
     //WiFi credential reading process
@@ -59,7 +147,7 @@ void app_main() {
     i2c_setup(I2C_NUM_0, I2C_MODE_MASTER, GPIO_NUM_22, GPIO_NUM_21, I2C_DEFAULT_FREQ);
     i2c_setup(I2C_NUM_1, I2C_MODE_MASTER, GPIO_NUM_26, GPIO_NUM_27, I2C_DEFAULT_FREQ);
     mic_setup(INMP441);
-    HX711_init(hx711);
+
 
 
     //Connect to WiFi
@@ -86,8 +174,6 @@ void app_main() {
             printf("Read SHT40 2\n");
             read_audio(&sound);
             printf("Read mic\n");
-            HX711_read(hx711, &weight);
-            printf("Read weight\n");
 
             //Save data to SD card
             //time(&stamp);
