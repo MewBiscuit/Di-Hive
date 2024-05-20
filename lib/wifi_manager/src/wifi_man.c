@@ -1,5 +1,7 @@
 #include "wifi_man.h"
 
+bool connected = false;
+
 //General
 void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
     if (event_base == WIFI_PROV_EVENT) {
@@ -51,11 +53,13 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
     else if (event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
         ESP_LOGI(WIFI_TAG, "station " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
+        connected = true;
     }
 
     else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
         wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *)event_data;
         ESP_LOGI(WIFI_TAG, "station " MACSTR " leave, AID=%d", MAC2STR(event->mac), event->aid);
+        connected = false;
     }
 
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
@@ -262,7 +266,7 @@ esp_err_t start_provisioning(char *ssid, char *password) {
     return err;
 }
 
-bool is_provisioned(bool* provisioned) {
+esp_err_t is_provisioned(bool* provisioned) {
     esp_err_t err = ESP_OK;
     
     err = wifi_prov_mgr_is_provisioned(provisioned);

@@ -30,6 +30,7 @@ static const char *WIFI_TAG = "wifi_manager";
 static EventGroupHandle_t s_wifi_event_group;
 EventBits_t bits;
 static int s_retry_num = 0;
+extern bool connected;
 
 /**
  * @brief Connect to an access point with the given SSID and password.
@@ -62,7 +63,7 @@ esp_err_t start_provisioning();
  * 
  * @return ESP Error code
  */
-bool is_provisioned(bool* provisioned);
+esp_err_t is_provisioned(bool* provisioned);
 
 /**
  * @brief Set up an access point with the given SSID and password.

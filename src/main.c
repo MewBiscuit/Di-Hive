@@ -1,6 +1,3 @@
-//ESP specific libraries
-#include "esp_sleep.h"
-
 //Homebrewed libraries
 #include "nvs_man.h"
 #include "wifi_man.h"
@@ -11,7 +8,7 @@
 //Logs
 #define TAG "MAIN"
 
-//Connectivity
+//Telemetry
 #define SERVER "mqtt://demo.thingsboard.io"
 #define TOKEN ""
 #define TOPIC "v1/devices/me/telemetry"
@@ -22,37 +19,54 @@ char ssid_var[256] = "dummy_data";
 char password_var[250] = "dummy_data";
 
 //WiFi
+#define AP_NAME "Di-Core_Prov"
+#define AP_PWD "Provisioning123"
 bool provisioned = false;
-int max_connections = 4;
-int channel = 1;
+int max_connections = 4, channel = 1;
+
 
 //Telemetry
 esp_mqtt_client_handle_t tb_client;
 
 //FreeRTOS
 #define STACK_SIZE 200
-StaticTask_t xTaskBuffer;
-StackType_t xStack[STACK_SIZE];
+StaticTask_t weightTaskBuffer, ambientTaskBuffer, soundTaskBuffer;
+StackType_t weightStack[STACK_SIZE], ambientStack[STACK_SIZE], soundStack[STACK_SIZE];
+portMUX_TYPE mutex = portMUX_INITIALIZER_UNLOCKED;
 
 // Weight reading, saving, and telemetry sending task
 void weightTask(void* pvParameters) {
     float weight = 0;
-    time_t stamp;
+    time_t stamp = 0;
+    const uint_fast8_t data_size = 64;
+    char data[data_size];
     Sensor hx711 = {.sda = GPIO_NUM_33, .sck = GPIO_NUM_14};
     int ms_periodicity = 600000;
 
     HX711_init(hx711);
 
     for(;;){
-        for(;provisioned;) {
+        for(;connected;) {
             HX711_read(hx711, &weight);
             post_numerical_data("weight", &weight, TOPIC, tb_client);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
 
-        for(;!provisioned;){
+        for(;!connected;) {
             HX711_read(hx711, &weight);
+            time(&stamp);
             //TODO: save to SD
+            snprintf(data, data_size, "{'ts':%ld, 'values':{'weight':%f}", stamp, weight);
+            taskENTER_CRITICAL(&mutex);
+            if(!provisioned) {
+                is_provisioned(&provisioned);
+            }
+            if(provisioned && !connected) {
+                read_string_from_nvs("ssid", ssid_var);
+                read_string_from_nvs("password", password_var);
+                connect_ap(ssid_var, password_var);
+            }
+            taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
         //TODO: dump sdcard data and free space
@@ -60,17 +74,18 @@ void weightTask(void* pvParameters) {
 }
 
 //Task for sht40 sensor reading, saving and telemetry sending
-//TODO: separate inside and outside components into 2 tasks
-void ambientVarsTask (void* pvParameters) {
+void ambientTask (void* pvParameters) {
     float temp_in = 0, temp_out = 0, hum_in = 0, hum_out = 0;
-    time_t stamp;
+    time_t stamp = 0;
+    const uint_fast8_t data_size = 128;
+    char data[data_size];
     int ms_periodicity = 30000;
 
     i2c_setup(I2C_NUM_0, I2C_MODE_MASTER, GPIO_NUM_22, GPIO_NUM_21, I2C_DEFAULT_FREQ);
     i2c_setup(I2C_NUM_1, I2C_MODE_MASTER, GPIO_NUM_26, GPIO_NUM_27, I2C_DEFAULT_FREQ);
 
     for(;;){
-        for(;provisioned;) {
+        for(;connected;) {
             SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
             SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
             post_numerical_data("temperature_in", &temp_in, TOPIC, tb_client);
@@ -80,10 +95,22 @@ void ambientVarsTask (void* pvParameters) {
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
 
-        for(;!provisioned;){
+        for(;!connected;) {
             SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
             SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
+            time(&stamp);
             //TODO: save to SD
+            snprintf(data, data_size, "{'ts':%ld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f}}", stamp, temp_out, temp_in, hum_out, hum_in);
+            taskENTER_CRITICAL(&mutex);
+            if(!provisioned) {
+                is_provisioned(&provisioned);
+            }
+            if(provisioned && !connected) {
+                read_string_from_nvs("ssid", ssid_var);
+                read_string_from_nvs("password", password_var);
+                connect_ap(ssid_var, password_var);
+            }
+            taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
 
@@ -93,21 +120,36 @@ void ambientVarsTask (void* pvParameters) {
 
 void soundTask(void* pvParameters) {
     float sound = 0;
-    time_t stamp;
-    int ms_periodicity = 10000;
+    time_t stamp = 0;
+    const uint_fast8_t data_size = 128;
+    char data[data_size];
+    int ms_periodicity = 5000;
 
     mic_setup(INMP441);
     
     for(;;){
-        for(;provisioned;) {
+        for(;connected;) {
             read_audio(&sound);
             post_numerical_data("sound", &sound, TOPIC, tb_client);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
 
-        for(;!provisioned;){
+        for(;!connected;) {
             read_audio(&sound);
+            time(&stamp);
             //TODO: save to SD
+            snprintf(data, data_size, "{'ts':%ld, 'values':{'sound':%f}", stamp, sound);
+            taskENTER_CRITICAL(&mutex);
+            if(!provisioned) {
+                is_provisioned(&provisioned);
+            }
+
+            if(provisioned && !connected) {
+                read_string_from_nvs("ssid", ssid_var);
+                read_string_from_nvs("password", password_var);
+                connect_ap(ssid_var, password_var);
+            }
+            taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
         //TODO: dump sdcard data and free space
@@ -115,117 +157,41 @@ void soundTask(void* pvParameters) {
 }
 
 
-//TODO: Implement all tasks of system, including OTA and telemetry
-
+//TODO: Implement OTA task
 void app_main() {
-    float sound = 0, temp_in = 0, temp_out = 0, hum_in = 0, hum_out = 0;
-    char flag_local_data;
     int i;
     esp_err_t err = ESP_OK;
-    TaskHandle_t weightTaskHandle = NULL;
 
-    for(i = 0; i < 10 && init_nvs() != ESP_OK; i++){
+    for(i = 0, err = init_nvs(); i < 10 && err != ESP_OK; i++) {
         ESP_LOGE(TAG, "Could not initialize nvs: %d", err);
-        esp_restart();
+        err = init_nvs();
     }
 
-    //WiFi credential reading process
-    err = read_string_from_nvs("ssid", ssid_var);
     if(err != ESP_OK) {
-        ESP_LOGI(TAG, "No SSID found in NVS");
-    }
-    err = read_string_from_nvs("password", password_var);
-    if(err != ESP_OK) {
-        ESP_LOGI(TAG, "No password found in NVS");
-    }
-    err = read_string_from_nvs("flag_local_data", &flag_local_data);
-    if(err != ESP_OK) {
-        write_string_to_nvs("flag_local_data", "0");
-        flag_local_data = '0';
-    }
-
-    i2c_setup(I2C_NUM_0, I2C_MODE_MASTER, GPIO_NUM_22, GPIO_NUM_21, I2C_DEFAULT_FREQ);
-    i2c_setup(I2C_NUM_1, I2C_MODE_MASTER, GPIO_NUM_26, GPIO_NUM_27, I2C_DEFAULT_FREQ);
-    mic_setup(INMP441);
-
-
-
-    //Connect to WiFi
-    wifi_init();
-    err = connect_ap(ssid_var, password_var);
-    if (err != ESP_OK) {
-        write_string_to_nvs("flag_local_data", "1");
-        flag_local_data = '1';
-        setup_ap("Di-Core_Prov", "provisioning112", &channel, &max_connections);
-    }
-
-
-    //TODO: Transform to Task
-    while (err != ESP_OK) {
-        is_provisioned(&provisioned);
-        printf("Checked if provisioned\n");
-        for(;!provisioned;) {
-            is_provisioned(&provisioned);
-            printf("Checked if provisioned in loop\n");
-            //Read sensor data
-            SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
-            printf("Read SHT40 1\n");
-            SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
-            printf("Read SHT40 2\n");
-            read_audio(&sound);
-            printf("Read mic\n");
-
-            //Save data to SD card
-            //time(&stamp);
-            //snprintf(data, MAX_CHAR_SIZE, "{'ts':%lld, 'values':{'%s':%d, '%s':%d, '%s':%d, '%s':%d, '%s':%d}}", stamp, "temperature_out", temp_out,
-            //"temperature_in", temp_in, "humidity_in", hum_in, "noise", noise, "weight", weight);
-
-            printf("{'%s':%2.f, '%s':%2.f, '%s':%2.f, '%s':%2.f, '%s':%2.f, '%s':%2.f}}\n", "temperature_out", temp_out, "temperature_in", temp_in, "humidity_in", hum_in, "humidity_out", hum_out, "sound", sound, "weight", weight);
-
-            //Can't send to sleep in order to keep prov server running
-            vTaskDelay(30000 / portTICK_PERIOD_MS);
+        if(rtc_get_reset_reason(0) == SW_CPU_RESET) {
+            ESP_LOGI(TAG, "Unable to initialize NVS, stand-by. Saving data locally");
+            //TODO: Should turn on a LED or something to represent error, need to figure that out
         }
-        err = read_string_from_nvs("ssid", ssid_var);
-        if(err != ESP_OK) {
-            ESP_LOGI(TAG, "No SSID found in NVS");
+        else {
+            ESP_LOGI(TAG, "Couldn't start up NVS, restarting");
+            esp_restart();
         }
-        err = read_string_from_nvs("password", password_var);
-        if(err != ESP_OK) {
-            ESP_LOGI(TAG, "No password found in NVS");
-        }
-        err = connect_ap(ssid_var, password_var);
     }
 
-    //Connect to Thingsboard
-    tb_client = connect_mqtt_token(SERVER, &port, TOKEN);
+    //We can initalize WiFi
+    else {
+        err = wifi_init();
 
-    if(flag_local_data == '1') {
-        //TODO: Send all logged data to Thingsboard
-        
-        // All data sent, unmount partition and disable SDMMC peripheral
-        ESP_LOGI(TAG, "Card unmounted");
-        
-        //Turn off flag_local_data
-        write_string_to_nvs("flag_local_data", "0");
+        //WiFi credential reading process
+        read_string_from_nvs("ssid", ssid_var);
+        read_string_from_nvs("password", password_var);
+
+        //Connect to WiFi
+        connect_ap(ssid_var, password_var);
     }
 
-    //Setup wakeup timer for sleep mode
-    esp_sleep_enable_timer_wakeup(25000000);
-
-    // Every 30 seconds we read all of the sensors and dump the data
-    SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
-    SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
-    read_audio(&sound);
-    HX711_read(hx711, &weight);
-
-    post_numerical_data("temperature_in", &temp_in, TOPIC, tb_client);
-    post_numerical_data("humidity_in", &hum_in, TOPIC, tb_client);
-    post_numerical_data("temperature_out", &temp_out, TOPIC, tb_client);
-    post_numerical_data("humidity_out", &hum_out, TOPIC, tb_client);
-    post_numerical_data("sound", &sound, TOPIC, tb_client);
-    post_numerical_data("weight", &weight, TOPIC, tb_client);
-
-    vTaskDelay(5000 / portTICK_PERIOD_MS); // Wait 5 seconds to avoid sleeping before sending data
-    wifi_release();
-    esp_deep_sleep_start();
+    //Launch all tasks
+    xTaskCreateStatic(soundTask, "sound", STACK_SIZE, ( void * ) 1, 1, soundStack, &soundTaskBuffer);
+    xTaskCreateStatic(ambientTask, "ambient", STACK_SIZE, ( void * ) 1, 1, ambientStack, &ambientTaskBuffer);
+    xTaskCreateStatic(weightTask, "weight", STACK_SIZE, ( void * ) 1, 1, weightStack, &weightTaskBuffer);
 }
