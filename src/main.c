@@ -29,7 +29,7 @@ char password_var[250] = "dummy_data";
 //WiFi
 #define AP_NAME "Di-Core_Prov"
 #define AP_PWD "Provisioning123"
-bool provisioned = false;
+bool provisioned = false, set_ap = false;
 int max_connections = 4, channel = 1;
 
 //Telemetry
@@ -140,6 +140,10 @@ void weightTask(void* pvParameters) {
             write_data(filename, data);
             taskENTER_CRITICAL(&mutex);
             if(!provisioned) {
+                if(!set_ap) {
+                    setup_ap(AP_NAME, AP_PWD, &channel, &max_connections);
+                    set_ap = true;
+                }
                 is_provisioned(&provisioned);
             }
             if(provisioned && !connected) {
@@ -150,7 +154,9 @@ void weightTask(void* pvParameters) {
             taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
+        taskENTER_CRITICAL(&mutex);
         dump_data(filename);
+        taskEXIT_CRITICAL(&mutex);
     }
 }
 
@@ -187,6 +193,10 @@ void ambientTask (void* pvParameters) {
             write_data(filename, data);
             taskENTER_CRITICAL(&mutex);
             if(!provisioned) {
+                if(!set_ap) {
+                    setup_ap(AP_NAME, AP_PWD, &channel, &max_connections);
+                    set_ap = true;
+                }
                 is_provisioned(&provisioned);
             }
             if(provisioned && !connected) {
@@ -197,7 +207,9 @@ void ambientTask (void* pvParameters) {
             taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
+        taskENTER_CRITICAL(&mutex);
         dump_data(filename);
+        taskEXIT_CRITICAL(&mutex);
     }
 }
 
@@ -227,6 +239,11 @@ void soundTask(void* pvParameters) {
             write_data(filename, data);
             taskENTER_CRITICAL(&mutex);
             if(!provisioned) {
+                if(!set_ap) {
+                    setup_ap(AP_NAME, AP_PWD, &channel, &max_connections);
+                    set_ap = true;
+                }
+                
                 is_provisioned(&provisioned);
             }
 
@@ -238,7 +255,9 @@ void soundTask(void* pvParameters) {
             taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
+        taskENTER_CRITICAL(&mutex);
         dump_data(filename);
+        taskEXIT_CRITICAL(&mutex);
     }
 }
 
@@ -273,7 +292,10 @@ void app_main() {
         read_string_from_nvs("password", password_var);
 
         //Connect to WiFi
-        connect_ap(ssid_var, password_var);
+        err = connect_ap(ssid_var, password_var);
+        if (err != ESP_OK) {
+            setup_ap(AP_NAME, AP_PWD, &channel, &max_connections);
+        }
     }
 
     //Launch all tasks
