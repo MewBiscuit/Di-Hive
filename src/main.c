@@ -5,6 +5,14 @@
 #include "sensors_man.h"
 #include "ota_man.h"
 
+//Standard libraries
+#include <string.h>
+#include <sys/unistd.h>
+#include <sys/stat.h>
+#include "esp_vfs_fat.h"
+#include "sdmmc_cmd.h"
+#include "driver/sdmmc_host.h"
+
 //Logs
 #define TAG "MAIN"
 
@@ -24,7 +32,6 @@ char password_var[250] = "dummy_data";
 bool provisioned = false;
 int max_connections = 4, channel = 1;
 
-
 //Telemetry
 esp_mqtt_client_handle_t tb_client;
 
@@ -34,29 +41,103 @@ StaticTask_t weightTaskBuffer, ambientTaskBuffer, soundTaskBuffer;
 StackType_t weightStack[STACK_SIZE], ambientStack[STACK_SIZE], soundStack[STACK_SIZE];
 portMUX_TYPE mutex = portMUX_INITIALIZER_UNLOCKED;
 
+//SD_Card
+sdmmc_card_t *card;
+
+
+// FUNCTIONS 
+
+esp_err_t init_sd(){
+    esp_err_t err;
+    const char mount_point[] = "/sdcard";
+    const char *file_ambient = "/sdcard/ambient.txt", *file_sound = "/sdcard/sound.txt", *file_weight = "/sdcard/weight.txt";
+    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+    FILE *f;
+
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .max_files = 5
+    };
+
+    slot_config.width = 4;
+    slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
+
+    err = esp_vfs_fat_sdmmc_mount(mount_point, &host, &slot_config, &mount_config, &card);
+    if(err != ESP_OK) {
+        ESP_LOGE(TAG, "Could not initialize SD_Card module");
+        return err;
+    }
+
+    f = fopen(file_ambient, "w");
+    fclose(f);
+    f = fopen(file_sound, "w");
+    fclose(f);
+    f = fopen(file_weight, "w");
+    fclose(f);
+
+    return err;
+}
+
+void write_data(char* path, char* data){
+    FILE *f;
+
+    f = fopen(*path, "a");
+    fprintf(f, *data, card->cid.name);
+    fclose(f);
+
+    return;
+}
+
+void dump_data(char* path){
+    FILE *f;
+    const uint_fast8_t data_size = 256;
+    char data[data_size];
+
+    f = fopen(*path, "r");
+    while (fgets(data, sizeof(data), f)) {
+            // Send the data to the server
+            post_line(data, TOPIC, tb_client);
+    }
+
+    fclose(f);
+    unlink(f);
+    f = fopen(*path, "w");
+    fclose(f);
+
+
+    return;
+}
+
+// TASKS
+
 // Weight reading, saving, and telemetry sending task
 void weightTask(void* pvParameters) {
     float weight = 0;
     time_t stamp = 0;
     const uint_fast8_t data_size = 64;
     char data[data_size];
+    const char *filename = "/sdcard/weight.txt";
     Sensor hx711 = {.sda = GPIO_NUM_33, .sck = GPIO_NUM_14};
     int ms_periodicity = 600000;
+    
 
     HX711_init(hx711);
 
     for(;;){
         for(;connected;) {
             HX711_read(hx711, &weight);
+            taskENTER_CRITICAL(&mutex);
             post_numerical_data("weight", &weight, TOPIC, tb_client);
+            taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
 
         for(;!connected;) {
             HX711_read(hx711, &weight);
             time(&stamp);
-            //TODO: save to SD
             snprintf(data, data_size, "{'ts':%ld, 'values':{'weight':%f}", stamp, weight);
+            write_data(filename, data);
             taskENTER_CRITICAL(&mutex);
             if(!provisioned) {
                 is_provisioned(&provisioned);
@@ -69,7 +150,7 @@ void weightTask(void* pvParameters) {
             taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
-        //TODO: dump sdcard data and free space
+        dump_data(filename);
     }
 }
 
@@ -79,6 +160,7 @@ void ambientTask (void* pvParameters) {
     time_t stamp = 0;
     const uint_fast8_t data_size = 128;
     char data[data_size];
+    const char *filename = "/sdcard/ambient.txt";
     int ms_periodicity = 30000;
 
     i2c_setup(I2C_NUM_0, I2C_MODE_MASTER, GPIO_NUM_22, GPIO_NUM_21, I2C_DEFAULT_FREQ);
@@ -88,10 +170,12 @@ void ambientTask (void* pvParameters) {
         for(;connected;) {
             SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
             SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
+            taskENTER_CRITICAL(&mutex);
             post_numerical_data("temperature_in", &temp_in, TOPIC, tb_client);
             post_numerical_data("humidity_in", &hum_in, TOPIC, tb_client);
             post_numerical_data("temperature_out", &temp_out, TOPIC, tb_client);
             post_numerical_data("humidity_out", &hum_out, TOPIC, tb_client);
+            taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
 
@@ -99,8 +183,8 @@ void ambientTask (void* pvParameters) {
             SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
             SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
             time(&stamp);
-            //TODO: save to SD
             snprintf(data, data_size, "{'ts':%ld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f}}", stamp, temp_out, temp_in, hum_out, hum_in);
+            write_data(filename, data);
             taskENTER_CRITICAL(&mutex);
             if(!provisioned) {
                 is_provisioned(&provisioned);
@@ -113,8 +197,7 @@ void ambientTask (void* pvParameters) {
             taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
-
-        //TODO: dump sdcard data and free space
+        dump_data(filename);
     }
 }
 
@@ -123,6 +206,7 @@ void soundTask(void* pvParameters) {
     time_t stamp = 0;
     const uint_fast8_t data_size = 128;
     char data[data_size];
+    const char *filename = "/sdcard/sound.txt";
     int ms_periodicity = 5000;
 
     mic_setup(INMP441);
@@ -130,15 +214,17 @@ void soundTask(void* pvParameters) {
     for(;;){
         for(;connected;) {
             read_audio(&sound);
+            taskENTER_CRITICAL(&mutex);
             post_numerical_data("sound", &sound, TOPIC, tb_client);
+            taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
 
         for(;!connected;) {
             read_audio(&sound);
             time(&stamp);
-            //TODO: save to SD
             snprintf(data, data_size, "{'ts':%ld, 'values':{'sound':%f}", stamp, sound);
+            write_data(filename, data);
             taskENTER_CRITICAL(&mutex);
             if(!provisioned) {
                 is_provisioned(&provisioned);
@@ -152,7 +238,7 @@ void soundTask(void* pvParameters) {
             taskEXIT_CRITICAL(&mutex);
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
-        //TODO: dump sdcard data and free space
+        dump_data(filename);
     }
 }
 

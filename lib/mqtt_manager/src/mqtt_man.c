@@ -112,3 +112,9 @@ esp_err_t post_numerical_data(char* key, float* value, char* target_path, esp_mq
 
     return err;
 }
+
+esp_err_t post_line(char* line, char* target_path, esp_mqtt_client_handle_t client) {
+    esp_mqtt_client_enqueue(client, target_path, line, 0, 1, 0, true);
+
+    return ESP_OK;
+}
