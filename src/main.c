@@ -12,6 +12,7 @@
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
 #include "driver/sdmmc_host.h"
+#include "esp_task_wdt.h"
 
 //Logs
 #define TAG "MAIN"
@@ -36,9 +37,9 @@ int max_connections = 4, channel = 1;
 esp_mqtt_client_handle_t tb_client;
 
 //FreeRTOS
-#define STACK_SIZE 200
-StaticTask_t weightTaskBuffer, ambientTaskBuffer, soundTaskBuffer;
-StackType_t weightStack[STACK_SIZE], ambientStack[STACK_SIZE], soundStack[STACK_SIZE];
+#define STACK_SIZE 8192
+StaticTask_t weightTaskBuffer, ambientTaskBuffer, soundTaskBuffer, otaTaskBuffer;
+StackType_t weightStack[STACK_SIZE], ambientStack[STACK_SIZE], soundStack[STACK_SIZE], otaStack[STACK_SIZE];
 portMUX_TYPE mutex = portMUX_INITIALIZER_UNLOCKED;
 
 //SD_Card
@@ -105,7 +106,6 @@ void dump_data(char* path){
     f = fopen(*path, "w");
     fclose(f);
 
-
     return;
 }
 
@@ -120,24 +120,24 @@ void weightTask(void* pvParameters) {
     const char *filename = "/sdcard/weight.txt";
     Sensor hx711 = {.sda = GPIO_NUM_33, .sck = GPIO_NUM_14};
     int ms_periodicity = 600000;
-    
 
     HX711_init(hx711);
 
-    for(;;){
-        for(;connected;) {
+    while(true){
+        while(connected) {
             HX711_read(hx711, &weight);
             taskENTER_CRITICAL(&mutex);
             post_numerical_data("weight", &weight, TOPIC, tb_client);
             taskEXIT_CRITICAL(&mutex);
+            ESP_ERROR_CHECK(esp_task_wdt_reset());  // Reset watchdog timer
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
 
-        for(;!connected;) {
+        while(!connected) {
             HX711_read(hx711, &weight);
             time(&stamp);
-            snprintf(data, data_size, "{'ts':%ld, 'values':{'weight':%f}", stamp, weight);
-            write_data(filename, data);
+            snprintf(data, data_size, "{'ts':%ld, 'values':{'weight':%f}}", stamp, weight);
+            //write_data(filename, data);
             taskENTER_CRITICAL(&mutex);
             if(!provisioned) {
                 if(!set_ap) {
@@ -152,16 +152,18 @@ void weightTask(void* pvParameters) {
                 connect_ap(ssid_var, password_var);
             }
             taskEXIT_CRITICAL(&mutex);
+            ESP_ERROR_CHECK(esp_task_wdt_reset());  // Reset watchdog timer
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
         taskENTER_CRITICAL(&mutex);
-        dump_data(filename);
+        //dump_data(filename);
+        set_ap = false;
         taskEXIT_CRITICAL(&mutex);
     }
 }
 
 //Task for sht40 sensor reading, saving and telemetry sending
-void ambientTask (void* pvParameters) {
+void ambientTask(void* pvParameters) {
     float temp_in = 0, temp_out = 0, hum_in = 0, hum_out = 0;
     time_t stamp = 0;
     const uint_fast8_t data_size = 128;
@@ -172,8 +174,8 @@ void ambientTask (void* pvParameters) {
     i2c_setup(I2C_NUM_0, I2C_MODE_MASTER, GPIO_NUM_22, GPIO_NUM_21, I2C_DEFAULT_FREQ);
     i2c_setup(I2C_NUM_1, I2C_MODE_MASTER, GPIO_NUM_26, GPIO_NUM_27, I2C_DEFAULT_FREQ);
 
-    for(;;){
-        for(;connected;) {
+    while(true){
+        while(connected) {
             SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
             SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
             taskENTER_CRITICAL(&mutex);
@@ -182,15 +184,16 @@ void ambientTask (void* pvParameters) {
             post_numerical_data("temperature_out", &temp_out, TOPIC, tb_client);
             post_numerical_data("humidity_out", &hum_out, TOPIC, tb_client);
             taskEXIT_CRITICAL(&mutex);
+            ESP_ERROR_CHECK(esp_task_wdt_reset());  // Reset watchdog timer
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
 
-        for(;!connected;) {
+        while(!connected) {
             SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
             SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
             time(&stamp);
             snprintf(data, data_size, "{'ts':%ld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f}}", stamp, temp_out, temp_in, hum_out, hum_in);
-            write_data(filename, data);
+            //write_data(filename, data);
             taskENTER_CRITICAL(&mutex);
             if(!provisioned) {
                 if(!set_ap) {
@@ -205,10 +208,12 @@ void ambientTask (void* pvParameters) {
                 connect_ap(ssid_var, password_var);
             }
             taskEXIT_CRITICAL(&mutex);
+            ESP_ERROR_CHECK(esp_task_wdt_reset());  // Reset watchdog timer
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
         taskENTER_CRITICAL(&mutex);
-        dump_data(filename);
+        //dump_data(filename);
+        set_ap = false;
         taskEXIT_CRITICAL(&mutex);
     }
 }
@@ -223,46 +228,63 @@ void soundTask(void* pvParameters) {
 
     mic_setup(INMP441);
     
-    for(;;){
-        for(;connected;) {
+    while(true){
+        while(connected) {
             read_audio(&sound);
             taskENTER_CRITICAL(&mutex);
             post_numerical_data("sound", &sound, TOPIC, tb_client);
             taskEXIT_CRITICAL(&mutex);
+            ESP_ERROR_CHECK(esp_task_wdt_reset());  // Reset watchdog timer
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
 
-        for(;!connected;) {
+        while(!connected) {
             read_audio(&sound);
             time(&stamp);
-            snprintf(data, data_size, "{'ts':%ld, 'values':{'sound':%f}", stamp, sound);
-            write_data(filename, data);
+            snprintf(data, data_size, "{'ts':%ld, 'values':{'sound':%f}}", stamp, sound);
+            //write_data(filename, data);
             taskENTER_CRITICAL(&mutex);
             if(!provisioned) {
                 if(!set_ap) {
                     setup_ap(AP_NAME, AP_PWD, &channel, &max_connections);
                     set_ap = true;
                 }
-                
                 is_provisioned(&provisioned);
             }
-
             if(provisioned && !connected) {
                 read_string_from_nvs("ssid", ssid_var);
                 read_string_from_nvs("password", password_var);
                 connect_ap(ssid_var, password_var);
             }
             taskEXIT_CRITICAL(&mutex);
+            ESP_ERROR_CHECK(esp_task_wdt_reset());  // Reset watchdog timer
             vTaskDelay(ms_periodicity / portTICK_PERIOD_MS);
         }
         taskENTER_CRITICAL(&mutex);
-        dump_data(filename);
+        //dump_data(filename);
+        set_ap = false;
         taskEXIT_CRITICAL(&mutex);
     }
 }
 
+void otaTask(void* pvParameters) {
+    esp_err_t err;
 
-//TODO: Implement OTA task
+    while(true) {
+            ESP_LOGI(TAG, "Checking for OTA updates...");
+            err = check_updates();
+            if (err == ESP_OK) {
+                ESP_LOGI(TAG, "OTA update completed successfully");
+            } 
+            
+            else {
+                ESP_LOGE(TAG, "OTA update failed");
+            }
+            ESP_ERROR_CHECK(esp_task_wdt_reset());
+            vTaskDelay(3600000 / portTICK_PERIOD_MS);  // Check for updates every hour
+    }
+}
+
 void app_main() {
     int i;
     esp_err_t err = ESP_OK;
@@ -299,7 +321,8 @@ void app_main() {
     }
 
     //Launch all tasks
-    xTaskCreateStatic(soundTask, "sound", STACK_SIZE, ( void * ) 1, 1, soundStack, &soundTaskBuffer);
-    xTaskCreateStatic(ambientTask, "ambient", STACK_SIZE, ( void * ) 1, 1, ambientStack, &ambientTaskBuffer);
-    xTaskCreateStatic(weightTask, "weight", STACK_SIZE, ( void * ) 1, 1, weightStack, &weightTaskBuffer);
+    xTaskCreateStatic(otaTask, "ota", STACK_SIZE, ( void * ) 1, 1, otaStack, &otaTaskBuffer);
+    ESP_ERROR_CHECK(esp_task_wdt_add(xTaskCreateStatic(soundTask, "sound", STACK_SIZE, ( void * ) 1, 4, soundStack, &soundTaskBuffer)));
+    ESP_ERROR_CHECK(esp_task_wdt_add(xTaskCreateStatic(ambientTask, "ambient", STACK_SIZE, ( void * ) 1, 3, ambientStack, &ambientTaskBuffer)));
+    ESP_ERROR_CHECK(esp_task_wdt_add(xTaskCreateStatic(weightTask, "weight", STACK_SIZE, ( void * ) 1, 2, weightStack, &weightTaskBuffer)));
 }
