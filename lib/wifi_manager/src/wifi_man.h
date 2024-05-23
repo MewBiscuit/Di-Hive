@@ -16,6 +16,7 @@
 #include "lwip/sys.h"
 #include "nvs_man.h"
 #include "esp_system.h"
+#include "sd_man.h"
 
 
 #include <wifi_provisioning/manager.h>

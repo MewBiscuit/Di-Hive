@@ -51,7 +51,7 @@ esp_err_t check_updates() {
 
     esp_http_client_config_t config = {
         .url = CONFIG_FIRMWARE_UPGRADE_URL,
-        .cert_pem = (char *)server_cert_pem_start,
+        .crt_bundle_attach = esp_crt_bundle_attach,
         .timeout_ms = CONFIG_OTA_RECV_TIMEOUT,
         .keep_alive_enable = true,
     };

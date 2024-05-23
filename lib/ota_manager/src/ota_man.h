@@ -9,6 +9,7 @@
 #include "esp_ota_ops.h"
 #include "esp_http_client.h"
 #include "esp_https_ota.h"
+#include "esp_crt_bundle.h"
 
 #if CONFIG_BOOTLOADER_APP_ANTI_ROLLBACK
 #include "esp_efuse.h"
@@ -19,8 +20,6 @@
 #define CONFIG_OTA_RECV_TIMEOUT 10000
 
 static const char* OTA_TAG = "ota_manager";
-extern const uint8_t server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
-extern const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 
 /**
 * @brief Check for any OTA updates, and if found, updates the Di-Core
