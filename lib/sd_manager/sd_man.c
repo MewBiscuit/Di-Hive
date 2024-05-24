@@ -34,9 +34,8 @@ void read_sd_creds(bool* saved, char* ssid, char* password) {
     if (stat(credentials, &st) == 0) { //If file exists
         *saved = true;
         f = fopen(credentials, 'r');
-        //TODO: Read credentials
-        //read ssid
-        //read password
+        fgets(ssid, sizeof(ssid), f);
+        fgets(password, sizeof(password), f);
         fclose(f);
     }
 
@@ -47,10 +46,19 @@ void read_sd_creds(bool* saved, char* ssid, char* password) {
 
 void write_data(char* path, char* data) {
     FILE *f;
+    struct stat st;
 
-    f = fopen(path, "a"); //TODO: The pointer is why paralelization doesn't work most likely, will check out once sequential is done
-    fprintf(f, data, card->cid.name);
-    fclose(f);
+    if (stat(*path, &st) == 0) { //If file exists
+        f = fopen(*path, "a"); //TODO: The pointer is why paralelization doesn't work most likely, will check out once sequential is done
+        fprintf(f, *data, card->cid.name);
+        fclose(f);
+    }
+
+    else {
+        f = fopen(*path, "w");
+        fprintf(f, *data, card->cid.name);
+        fclose(f);
+    }
 
     return;
 }

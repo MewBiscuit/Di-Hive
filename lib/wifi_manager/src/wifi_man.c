@@ -27,7 +27,6 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
                 ESP_LOGI(WIFI_TAG, "Password: %s", password);
                 write_string_to_nvs("ssid", ssid);
                 write_string_to_nvs("password", password);
-                
                 write_data("/sdcard/credentials.txt", ssid);
                 write_data("/sdcard/credentials.txt", password);
                 break;
