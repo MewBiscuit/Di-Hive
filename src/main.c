@@ -197,10 +197,35 @@ void app_main() {
     //Wifi module out but sd card works
     else if(!sd_flag){
         //TODO: Turn on wifi error on screen
-        SHT40_read(I2C_NUM_0, &temp_in, &hum_in);
-        SHT40_read(I2C_NUM_1, &temp_out, &hum_out);
-        read_audio(&sound);
-        HX711_read(hx711, &weight);
+        if(ambient_in_flag) {
+            if(SHT40_read(I2C_NUM_0, &temp_in, &hum_in) != ESP_OK) {
+                temp_in = 0;
+                hum_in = 0;
+                ambient_in_flag = true;
+            }
+        }
+
+        if(!ambient_out_flag) {
+            if(SHT40_read(I2C_NUM_1, &temp_out, &hum_out) != ESP_OK) {
+                temp_out = 0;
+                hum_out = 0;
+                ambient_out_flag = true;
+            }
+        }
+            
+        if(!mic_flag) {
+            if(read_audio(&sound) != ESP_OK) {
+                sound =  0;
+                mic_flag = true;
+            }
+        }
+
+        if(!weight_flag) {
+            if(HX711_read(hx711, &weight) != ESP_OK) {
+                weight = 0;
+                weight_flag = true;
+            }
+        }
         time(&stamp);
         snprintf(data, data_size, "{'ts':%ld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f, 'weight':%f, 'sound':%f}}", stamp, temp_out, temp_in, hum_out, hum_in, weight, sound);
         write_data(file_data, data);
