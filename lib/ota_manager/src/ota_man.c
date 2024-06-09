@@ -101,7 +101,6 @@ esp_err_t check_updates() {
     if(esp_https_ota_is_complete_data_received(https_ota_handle) != true) {
         // the OTA image was not completely received and user can customise the response to this situation.
         ESP_LOGE(OTA_TAG, "Complete data was not received.");
-        //TODO: rollback to previous version
     } 
     
     else {
