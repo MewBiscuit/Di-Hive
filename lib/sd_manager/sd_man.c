@@ -59,14 +59,17 @@ void dump_data(char* path, char* topic, esp_mqtt_client_handle_t tb_client) {
     FILE *f;
     const uint_fast8_t data_size = 256;
     char data[data_size];
+    struct stat st;
 
-    f = fopen(*path, "r");
-    while (fgets(data, sizeof(data), f)) {
-        post_line(data, topic, tb_client);
+    if (stat(*path, &st) == 0) {//If file exists
+        f = fopen(*path, "r");
+        while (fgets(data, sizeof(data), f)) {
+            post_line(data, topic, tb_client);
+        }
+        
+        fclose(f);
+        unlink(f);
     }
-
-    fclose(f);
-    unlink(f);
 
     return;
 }
