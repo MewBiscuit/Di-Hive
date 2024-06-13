@@ -15,16 +15,14 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
                          "\n\tSSID     : %s\n\tPassword : %s",
                          (const char *) wifi_sta_cfg->ssid,
                          (const char *) wifi_sta_cfg->password);
-                //save ssid and password to char[] and pass to connect_ap
+                //save ssid and password to char[]
                 char ssid[256];
                 char password[256];
                 strncpy(ssid, (const char *)wifi_sta_cfg->ssid, sizeof(ssid) - 1);
                 ssid[sizeof(ssid) - 1] = '\0';
                 strncpy(password, (const char *)wifi_sta_cfg->password, sizeof(password) - 1);
                 password[sizeof(password) - 1] = '\0';
-                ESP_LOGI(WIFI_TAG, "Saving credentials to NVS");
-                ESP_LOGI(WIFI_TAG, "SSID: %s", ssid);
-                ESP_LOGI(WIFI_TAG, "Password: %s", password);
+                ESP_LOGI(WIFI_TAG, "Saving credentials to NVS and SD");
                 write_string_to_nvs("ssid", ssid);
                 write_string_to_nvs("password", password);
                 write_data("/sdcard/credentials.txt", ssid);
@@ -55,13 +53,11 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
     else if (event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t *event = (wifi_event_ap_staconnected_t *)event_data;
         ESP_LOGI(WIFI_TAG, "station " MACSTR " join, AID=%d", MAC2STR(event->mac), event->aid);
-        connected = true;
     }
 
     else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
         wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *)event_data;
         ESP_LOGI(WIFI_TAG, "station " MACSTR " leave, AID=%d", MAC2STR(event->mac), event->aid);
-        connected = false;
     }
 
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
@@ -128,11 +124,12 @@ esp_err_t wifi_release() {
 //Wifi STA
 esp_err_t connect_ap(const char *ssid, const char *password) {
     esp_err_t err = ESP_OK;
-    s_wifi_event_group = xEventGroupCreate();
     EventBits_t bits;
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
     int len_ssid = strlen(ssid), len_pass = strlen(password);
+
+    s_wifi_event_group = xEventGroupCreate();
 
     err = esp_netif_init();
     if(err != ESP_OK) {
@@ -187,11 +184,13 @@ esp_err_t connect_ap(const char *ssid, const char *password) {
 
     bits = xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
 
-    if(bits & WIFI_CONNECTED_BIT)
+    if(bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(WIFI_TAG, "Connected to AP with SSID:%s", ssid);
+        connected = true;
+    }
 
     else if(bits & WIFI_FAIL_BIT) {
-        ESP_LOGI(WIFI_TAG, "Failed to connect to SSID:%s", ssid);
+        ESP_LOGI(WIFI_TAG, "Failed to connect to SSID:%s and Password:%s", ssid, password);
         return ESP_FAIL;
     }
 
@@ -201,6 +200,10 @@ esp_err_t connect_ap(const char *ssid, const char *password) {
     }
 
     return ESP_OK;
+}
+
+bool is_connected() {
+    return connected;
 }
 
 esp_err_t disconnect_ap() {

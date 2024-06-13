@@ -4,6 +4,7 @@
 #include "mqtt_man.h"
 #include "sensors_man.h"
 #include "ota_man.h"
+#include "sd_man.h"
 
 //Standard libraries
 #include "esp_sleep.h"
@@ -11,32 +12,57 @@
 //Logs
 #define TAG "MAIN"
 
+//Telemetry
+#define SERVER "mqtt://demo.thingsboard.io"
+#define TOKEN ""
+#define TOPIC "v1/devices/me/telemetry"
+const int port = 1883;
+
+//NVS
+char ssid_var[256] = "dummy_data";
+char password_var[250] = "dummy_data";
+
+//WiFi
+#define AP_NAME "Di-Core_Prov"
+#define AP_PWD "Provisioning123"
+bool provisioned = false, credentials = false, wifi_flag = false;
+int max_connections = 4, channel = 1;
+
+//Telemetry
+esp_mqtt_client_handle_t tb_client;
+
+//Local memory
+char *file_data = "/sdcard/data.txt", *file_credentials = "/sdcard/credentials.txt";
+bool sd_flag = 0, nvs_flag = 0;
+
 void app_main() {
-    float weight = 0;
-    int32_t raw_data;
-    esp_err_t err = ESP_OK;
-    hx711_t sensor = {.dout = GPIO_NUM_26, .pd_sck = GPIO_NUM_27, .gain = HX711_GAIN_A_128};
+    int i;
 
-    printf("Initializing sensor...\n");
-    err = HX711_init(&sensor);
-
-    if(err != ESP_OK) {
-        printf("Couldn't initialize hx771\n");
+    for(i = 0; i < 10 && init_nvs() != ESP_OK; i++) {
+        printf("NVS Init method failed for %d time(s)\n", i);
     }
 
-    else{
-        printf("Done\n");
-        while(true) {
-            printf("Reading sensor...\n");
-            if(HX711_read(&sensor, &weight, &raw_data) != ESP_OK) {
-                printf("Error reading hx771\n");
-            }
+    //Init wifi module
+    if(wifi_init() != ESP_OK) {
+        printf("Failed to initialize Wifi Module\n");
+        return;
+    }
 
-            else {
-                printf("Raw reading: %d g\n", raw_data);
-            }
+    //Connect to AP
+    while(!is_connected()) {
+        printf("Attempting to connect to AP...\n");
+        connect_ap("IA", "hola1112");
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+    }
 
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
-        }
+    printf("Connected!\nChecking updates...\n");
+    
+    //Check for updates
+    if(check_updates() == ESP_OK) {
+        printf("Succesfully updated :)\n");
+    }
+
+    else {
+        printf("Something went wrong my man :C, check the logs\n");
     }
 }

@@ -73,7 +73,6 @@ esp_err_t check_updates() {
     err = esp_https_ota_begin(&ota_config, &https_ota_handle);
     if(err != ESP_OK) {
         ESP_LOGE(OTA_TAG, "ESP HTTPS OTA start failed");
-        vTaskDelete(NULL);
         return err;
     }
 
@@ -96,7 +95,7 @@ esp_err_t check_updates() {
     do {
         err = esp_https_ota_perform(https_ota_handle);
         ESP_LOGD(OTA_TAG, "Image bytes read: %d", esp_https_ota_get_image_len_read(https_ota_handle));
-    }while(err != ESP_ERR_HTTPS_OTA_IN_PROGRESS);
+    }while(err == ESP_ERR_HTTPS_OTA_IN_PROGRESS);
 
     if(esp_https_ota_is_complete_data_received(https_ota_handle) != true) {
         // the OTA image was not completely received and user can customise the response to this situation.

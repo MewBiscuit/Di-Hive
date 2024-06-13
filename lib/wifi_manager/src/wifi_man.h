@@ -29,9 +29,7 @@ static const char *WIFI_TAG = "wifi_manager";
 #define ESP_MAXIMUM_RETRY 10
 
 static EventGroupHandle_t s_wifi_event_group;
-EventBits_t bits;
 static int s_retry_num = 0;
-extern bool connected;
 
 /**
  * @brief Connect to an access point with the given SSID and password.
@@ -75,6 +73,13 @@ esp_err_t is_provisioned(bool* provisioned);
  * @return esp_err_t
  */
 esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connections);
+
+/**
+ * @brief Checks if Di_Core is connected
+ *
+ * @return False if disconnected, True if connected
+ */
+bool is_connected();
 
 esp_err_t wifi_init();
 
