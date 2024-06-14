@@ -134,75 +134,25 @@ esp_err_t SHT40_read(i2c_port_t port, float* temp, float* hum) {
     return err;
 }
 
-esp_err_t HX711_init(Sensor hx771) {
-    esp_err_t err = ESP_OK;
-    
-    gpio_config_t hx771_conf ={
-        .intr_type = GPIO_INTR_DISABLE,
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = (1ULL<<hx771.sck),
-        .pull_down_en = 0,
-        .pull_up_en = 0
-    };
-
-    err = gpio_config(&hx771_conf);
-    if(err != ESP_OK){
-        ESP_LOGE(SENSORS_TAG, "Failed to initialize HX771 when configuring SCK: %d", err);
-        return err;
-    }
-
-    hx771_conf.intr_type = GPIO_INTR_DISABLE;
-    hx771_conf.pin_bit_mask = (1ULL<<hx771.sda);
-    hx771_conf.mode = GPIO_MODE_INPUT;
-    hx771_conf.pull_up_en = 0;
-
-    err = gpio_config(&hx771_conf);
-    if(err != ESP_OK){
-        ESP_LOGE(SENSORS_TAG, "Failed to initialize HX771 when configuring Data input: %d", err);
-    }
-
-    return err;
+esp_err_t HX711_init(hx711_t *sensor) {
+    return hx711_init(sensor);
 }
 
-esp_err_t HX711_read(Sensor hx771, float *weight) {
-    esp_err_t err = ESP_OK;
-    int i;
-    char j;
-    unsigned long value, sum = 0;
+esp_err_t HX711_read(hx711_t *sensor, float *weight, int32_t *raw_data) {
+    esp_err_t err;
 
-    for(j = 0; j < 10; j++) {
-        gpio_set_level(hx771.sck, 0);
+    if(hx711_wait(sensor, 5000) == ESP_OK) {
+        err = hx711_read_data(sensor, raw_data);
+        if(err != ESP_OK) {
+            return err;
+        }
 
-    	while (gpio_get_level(hx771.sda)) {
-    		vTaskDelay(10 / portTICK_PERIOD_MS);
-    	}
+        *raw_data += 120000;
 
-        value = 0;
-
-        portDISABLE_INTERRUPTS();
-
-        for(i = 0; i < 24 ; i++) {   
-    		gpio_set_level(hx771.sck, 1);
-            vTaskDelay(20 / portTICK_PERIOD_MS);
-            value = value << 1;
-            gpio_set_level(hx771.sck, 0);
-            vTaskDelay(20 / portTICK_PERIOD_MS);
-
-            if(gpio_get_level(hx771.sda))
-            	value++;
-    	}
-
-		gpio_set_level(hx771.sck, 1);
-		vTaskDelay(20 / portTICK_PERIOD_MS);
-		gpio_set_level(hx771.sck, 0);
-		vTaskDelay(20 / portTICK_PERIOD_MS);
-
-    	portENABLE_INTERRUPTS();
-
-        sum += value^0x800000;
+        return ESP_OK;
     }
 
-    *weight = (sum/10.) / TARE;
-
-    return err;
+    else {
+        return ESP_ERR_TIMEOUT;
+    }
 }

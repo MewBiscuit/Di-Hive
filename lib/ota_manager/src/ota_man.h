@@ -16,7 +16,7 @@
 #endif
 
 #define OTA_URL_SIZE 256
-#define CONFIG_FIRMWARE_UPGRADE_URL "myurl.com"
+#define CONFIG_FIRMWARE_UPGRADE_URL "myurl_here"
 #define CONFIG_OTA_RECV_TIMEOUT 10000
 
 static const char* OTA_TAG = "ota_manager";

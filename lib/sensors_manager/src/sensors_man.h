@@ -15,6 +15,8 @@
 #include <driver/i2s.h>
 #include <driver/gpio.h>
 
+#include "hx711.h"
+
 #define I2C_DEFAULT_FREQ 100000
 #define I2C_MASTER_TX_BUF_DISABLE 0
 #define I2C_MASTER_RX_BUF_DISABLE 0
@@ -28,11 +30,6 @@
 typedef enum {
     INMP441
 } Microphone;
-
-typedef struct{
-    gpio_num_t sda;
-    gpio_num_t sck;
-} Sensor;
 
 /**
  * @brief Initializes I2C module with specified parameters
@@ -93,7 +90,7 @@ esp_err_t SHT40_read(i2c_port_t port, float* temp, float* hum);
  * 
  * @return esp_err_t Error code
 */
-esp_err_t HX711_init(Sensor hx771);
+esp_err_t HX711_init(hx711_t *sensor);
 
 /**
  * @brief Read values and transfrom to weight from HX771 sensor
@@ -103,6 +100,6 @@ esp_err_t HX711_init(Sensor hx771);
  * 
  * @return esp_err_t Error code
 */
-esp_err_t HX711_read(Sensor hx771, float* weight);
+esp_err_t HX711_read(hx711_t *sensor, float* weight, int32_t *raw_data);
 
 #endif

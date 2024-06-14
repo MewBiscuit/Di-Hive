@@ -63,10 +63,10 @@ static void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_
 
 esp_mqtt_client_handle_t connect_mqtt_user_and_password(char* uri, int* port, char* username, char* password) {
     esp_mqtt_client_config_t mqtt_cfg = {
-        .uri = uri,
-        .port = *port,
-        .username = username,
-        .password = password,
+        .broker.address.uri = uri,
+        .broker.address.port = *port,
+        .credentials.username = username,
+        .credentials.authentication.password = password
     };
 
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
@@ -77,10 +77,9 @@ esp_mqtt_client_handle_t connect_mqtt_user_and_password(char* uri, int* port, ch
 
 esp_mqtt_client_handle_t connect_mqtt_token(char* uri, int* port, char* token){
     esp_mqtt_client_config_t mqtt_cfg = {
-        .uri = uri,
-        .port = *port,
-        .username = token,
-
+        .broker.address.uri = uri,
+        .broker.address.port = *port,
+        .credentials.username = token,
     };
 
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
