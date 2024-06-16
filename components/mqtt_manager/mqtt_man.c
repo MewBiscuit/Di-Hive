@@ -1,12 +1,12 @@
 #include "mqtt_man.h"
 
-static void log_error_if_nonzero(const char *message, int error_code) {
+static void log_error_if_nonzero(const char* message, int error_code) {
     if (error_code != 0) {
         ESP_LOGE(MQTT_TAG, "Last error %s: 0x%x", message, error_code);
     }
 }
 
-static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+static void mqtt_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id, void* event_data) {
     ESP_LOGD(MQTT_TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = event_data;
     esp_mqtt_client_handle_t client = event->client;
@@ -61,12 +61,12 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
-esp_mqtt_client_handle_t connect_mqtt_user_and_password(char *uri, int *port, char *username, char *password) {
+esp_mqtt_client_handle_t connect_mqtt_user_and_password(char* uri, int* port, char* username, char* password) {
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = uri,
         .broker.address.port = *port,
         .credentials.username = username,
-        .credentials.authentication.password = password,
+        .credentials.authentication.password = password
     };
 
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
@@ -75,12 +75,11 @@ esp_mqtt_client_handle_t connect_mqtt_user_and_password(char *uri, int *port, ch
     return client;
 }
 
-esp_mqtt_client_handle_t connect_mqtt_token(char *uri, int *port, char *token){
+esp_mqtt_client_handle_t connect_mqtt_token(char* uri, int* port, char* token){
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = uri,
         .broker.address.port = *port,
         .credentials.username = token,
-
     };
 
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
@@ -89,7 +88,7 @@ esp_mqtt_client_handle_t connect_mqtt_token(char *uri, int *port, char *token){
     return client;
 }
 
-esp_err_t post_text_data(char *key, char *value, char *target_path, esp_mqtt_client_handle_t client) {
+esp_err_t post_text_data(char* key, char* value, char* target_path, esp_mqtt_client_handle_t client) {
     esp_err_t err = ESP_OK;
 
     cJSON *root = cJSON_CreateObject();
@@ -101,15 +100,20 @@ esp_err_t post_text_data(char *key, char *value, char *target_path, esp_mqtt_cli
     return err;
 }
 
-esp_err_t post_numerical_data(char *key, int *value, char *target_path, esp_mqtt_client_handle_t client) {
+esp_err_t post_numerical_data(char* key, float* value, char* target_path, esp_mqtt_client_handle_t client) {
     esp_err_t err = ESP_OK;
     
     cJSON *root = cJSON_CreateObject();
-    printf("key: %s, value: %d", key, *value);
     cJSON_AddNumberToObject(root, key, *value);
     char *post_data = cJSON_PrintUnformatted(root);
     esp_mqtt_client_enqueue(client, target_path, post_data, 0, 1, 0, true);
     free(post_data);
 
     return err;
+}
+
+esp_err_t post_line(char* line, char* target_path, esp_mqtt_client_handle_t client) {
+    esp_mqtt_client_enqueue(client, target_path, line, 0, 1, 0, true);
+
+    return ESP_OK;
 }

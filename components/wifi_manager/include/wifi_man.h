@@ -16,19 +16,20 @@
 #include "lwip/sys.h"
 #include "nvs_man.h"
 #include "esp_system.h"
+#include "sd_man.h"
+
 
 #include <wifi_provisioning/manager.h>
 #include <wifi_provisioning/scheme_softap.h>
 
 static const char *WIFI_TAG = "wifi_manager";
-static const char *STA_TAG = "wifi_man_sta";
-static const char *AP_TAG = "wifi_man_ap";
 
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 #define ESP_MAXIMUM_RETRY 10
 
 static EventGroupHandle_t s_wifi_event_group;
+static int s_retry_num = 0;
 
 /**
  * @brief Connect to an access point with the given SSID and password.
@@ -57,10 +58,11 @@ esp_err_t start_provisioning();
 /**
  * @brief Check if the device has been provisioned.
  * 
- * @return true 
- * @return false 
+ * @param provisioned Pointer to boolean variable
+ * 
+ * @return ESP Error code
  */
-bool is_provisioned();
+esp_err_t is_provisioned(bool* provisioned);
 
 /**
  * @brief Set up an access point with the given SSID and password.
@@ -71,6 +73,13 @@ bool is_provisioned();
  * @return esp_err_t
  */
 esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connections);
+
+/**
+ * @brief Checks if Di_Core is connected
+ *
+ * @return False if disconnected, True if connected
+ */
+bool is_connected();
 
 esp_err_t wifi_init();
 

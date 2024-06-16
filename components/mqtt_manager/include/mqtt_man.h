@@ -70,6 +70,17 @@ esp_err_t post_text_data(char *key, char *value, char *target_path, esp_mqtt_cli
  * 
  * @return esp_err_t Error code
 */
-esp_err_t post_numerical_data(char *key, int *value, char *target_path, esp_mqtt_client_handle_t client);
+esp_err_t post_numerical_data(char *key, float *value, char *target_path, esp_mqtt_client_handle_t client);
+
+/**
+ * @brief Post line of data to MQTT broker
+ * 
+ * @param line Data to be posted
+ * @param target_path Target path of the data
+ * @param client Handle of the MQTT client
+ * 
+ * @return esp_err_t Error code
+*/
+esp_err_t post_line(char* line, char* target_path, esp_mqtt_client_handle_t client) ;
 
 #endif
