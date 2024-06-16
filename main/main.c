@@ -67,10 +67,10 @@ void init_sensors(hx711_t *sens) {
     }
 }
 
-void turnoff_system() {
+void turnoff_system(SSD1306_t *dev, int line) {
     esp_sleep_enable_ext0_wakeup(GPIO_NUM_25, 1);
     gpio_hold_en(GPIO_NUM_32); //Led/Screen PIN
-    //TODO: Turn on LED/Screen to show error
+    ssd1306_display_text(dev, line, "Critical failure", 16, false);
     gpio_deep_sleep_hold_en();
     esp_deep_sleep_start();
 }
@@ -99,6 +99,7 @@ void app_main() {
     if(err != ESP_OK) {
         if(esp_rom_get_reset_reason(0) == RESET_REASON_CORE_SW) {
             nvs_flag = 1;
+            ssd1306_display_text(&ssd1306, num_err, "NVS Error", 9, false);
             num_err++;
         }
         else {
@@ -112,6 +113,7 @@ void app_main() {
     err = init_sd();
     if(err != ESP_OK) {
         sd_flag = 1;
+        ssd1306_display_text(&ssd1306, num_err, "SD Error", 8, false);
         num_err++;
     }
 
@@ -119,7 +121,7 @@ void app_main() {
         read_sd_creds(&credentials, ssid_var, password_var);
 
     if(sd_flag && nvs_flag) //System deemed unusable, turnoff sequence
-        turnoff_system();
+        turnoff_system(&ssd1306, num_err);
 
     //If system is usable
     init_sensors(&load_cells);
@@ -128,6 +130,7 @@ void app_main() {
     err = wifi_init();
     if(err != ESP_OK) {
         wifi_flag = true;
+        ssd1306_display_text(&ssd1306, num_err, "WiFi Error", 10, false);
         num_err++;
     }
     
@@ -212,8 +215,6 @@ void app_main() {
 
     //Wifi module out but sd card works
     else if(!sd_flag){
-        //TODO: Turn on wifi error on screen
-        num_err++;
         if(ambient_in_flag) {
             if(SHT40_read(I2C_NUM_0, &temp_in, &hum_in) != ESP_OK) {
                 temp_in = 0;
@@ -251,5 +252,5 @@ void app_main() {
 
     //No WiFi and no SD Card -> Not useful, shutdown
     else 
-        turnoff_system();
+        turnoff_system(&ssd1306, num_err);
 }
