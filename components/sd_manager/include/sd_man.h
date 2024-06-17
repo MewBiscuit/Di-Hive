@@ -10,10 +10,10 @@
 #include "mqtt_man.h"
 #include "esp_log.h"
 
-#define PIN_NUM_MISO  GPIO_NUM_27
-#define PIN_NUM_MOSI  GPIO_NUM_26
-#define PIN_NUM_CLK   GPIO_NUM_25
-#define PIN_NUM_CS    GPIO_NUM_33
+#define PIN_NUM_MISO  GPIO_NUM_2
+#define PIN_NUM_MOSI  GPIO_NUM_15
+#define PIN_NUM_CLK   GPIO_NUM_14
+#define PIN_NUM_CS    GPIO_NUM_13
 
 #define SD_TAG "sd_manager"
 

@@ -6,6 +6,7 @@ esp_err_t init_sd() {
     esp_err_t err;
     const char mount_point[] = "/sdcard";
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    host.max_freq_khz = 1000;
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
 #ifdef CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED
         .format_if_mount_failed = true,
@@ -21,7 +22,7 @@ esp_err_t init_sd() {
         .sclk_io_num = PIN_NUM_CLK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = 4000,
+        .max_transfer_sz = 4092
     };
 
     err = spi_bus_initialize(host.slot, &bus_cfg, SDSPI_DEFAULT_DMA);
@@ -71,8 +72,8 @@ void write_data(char* path, char* data) {
     FILE *f;
     struct stat st;
 
-    f = fopen(*path, "a"); //TODO: The pointer is why paralelization doesn't work most likely, will check out once sequential is done
-    fprintf(f, *data, card->cid.name);
+    f = fopen(path, "a"); //TODO: The pointer is why paralelization doesn't work most likely, will check out once sequential is done
+    fprintf(f, data, card->cid.name);
     fclose(f);
 
     return;
@@ -84,8 +85,8 @@ void dump_data(char* path, char* topic, esp_mqtt_client_handle_t tb_client) {
     char data[data_size];
     struct stat st;
 
-    if (stat(*path, &st) == 0) {//If file exists
-        f = fopen(*path, "r");
+    if (stat(path, &st) == 0) {//If file exists
+        f = fopen(path, "r");
         while (fgets(data, sizeof(data), f)) {
             post_line(data, topic, tb_client);
         }
