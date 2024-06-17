@@ -5,9 +5,15 @@
 #include <sys/unistd.h>
 #include <sys/stat.h>
 #include "esp_vfs_fat.h"
+#include "driver/sdspi_host.h"
 #include "sdmmc_cmd.h"
-#include "driver/sdmmc_host.h"
 #include "mqtt_man.h"
+#include "esp_log.h"
+
+#define PIN_NUM_MISO  GPIO_NUM_27
+#define PIN_NUM_MOSI  GPIO_NUM_26
+#define PIN_NUM_CLK   GPIO_NUM_25
+#define PIN_NUM_CS    GPIO_NUM_33
 
 #define SD_TAG "sd_manager"
 

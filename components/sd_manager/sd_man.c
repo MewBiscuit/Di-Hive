@@ -5,21 +5,44 @@ sdmmc_card_t *card;
 esp_err_t init_sd() {
     esp_err_t err;
     const char mount_point[] = "/sdcard";
-    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
-
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+#ifdef CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED
+        .format_if_mount_failed = true,
+#else
         .format_if_mount_failed = false,
-        .max_files = 5
+#endif
+        .max_files = 5,
+        .allocation_unit_size = 16 * 1024
+    };
+    spi_bus_config_t bus_cfg = {
+        .mosi_io_num = PIN_NUM_MOSI,
+        .miso_io_num = PIN_NUM_MISO,
+        .sclk_io_num = PIN_NUM_CLK,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .max_transfer_sz = 4000,
     };
 
-    slot_config.width = 4;
-    slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
-
-    err = esp_vfs_fat_sdmmc_mount(mount_point, &host, &slot_config, &mount_config, &card);
-    if(err != ESP_OK) {
-        ESP_LOGE(SD_TAG, "Could not initialize SD_Card module");
+    err = spi_bus_initialize(host.slot, &bus_cfg, SDSPI_DEFAULT_DMA);
+    if (err != ESP_OK) {
+        ESP_LOGE(SD_TAG, "Failed to initialize SPI bus.");
         return err;
+    }
+
+    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
+    slot_config.gpio_cs = PIN_NUM_CS;
+    slot_config.host_id = host.slot;
+
+    err = esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_config, &mount_config, &card);
+    if (err != ESP_OK) {
+        if (err == ESP_FAIL) {
+            ESP_LOGE(SD_TAG, "Failed to mount filesystem. If you want the card to be formatted, set the CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED menuconfig option.");
+        } 
+        
+        else {
+            ESP_LOGE(SD_TAG, "Failed to initialize the card (%s). Make sure SD card lines have pull-up resistors in place.", esp_err_to_name(err));
+        }
     }
 
     return err;
