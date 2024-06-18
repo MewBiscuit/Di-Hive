@@ -57,7 +57,7 @@ void read_sd_creds(bool* saved, char* ssid, char* password) {
     //Check credentials
     if (stat(credentials, &st) == 0) { //If file exists
         *saved = true;
-        f = fopen(credentials, 'r');
+        f = fopen(credentials, "r");
         fgets(ssid, sizeof(ssid), f);
         fgets(password, sizeof(password), f);
         fclose(f);
@@ -72,27 +72,36 @@ void write_data(char* path, char* data) {
     FILE *f;
     struct stat st;
 
-    f = fopen(path, "a"); //TODO: The pointer is why paralelization doesn't work most likely, will check out once sequential is done
+    f = fopen(path, "a");
     fprintf(f, data, card->cid.name);
     fclose(f);
 
     return;
 }
 
-void dump_data(char* path, char* topic, esp_mqtt_client_handle_t tb_client) {
+void dump_data(char* path, char* topic, esp_mqtt_client_handle_t tb_client, int lines) {
     FILE *f;
     const uint_fast8_t data_size = 256;
     char data[data_size];
     struct stat st;
+    float sound = 0, temp_in = 0, temp_out = 0, hum_in = 0, hum_out = 0, weight = 0;
+    time_t current_stamp = 0, read_stamp = 0;
+    
+    if (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(15000)) != ESP_OK) {
+        ESP_LOGE(SD_TAG, "Failed to update system time within 10s timeout");
+    }
 
-    if (stat(path, &st) == 0) {//If file exists
+    time(&current_stamp);
+
+    if(stat(path, &st) == 0) {//If file exists
         f = fopen(path, "r");
-        while (fgets(data, sizeof(data), f)) {
+        while (fscanf(f, "{'ts':%lld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f, 'weight':%f, 'sound':%f}}", &read_stamp, &temp_out, &temp_in, &hum_out, &hum_in, &weight, &sound)) {
+            snprintf(data, data_size, "{'ts':%lld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f, 'weight':%f, 'sound':%f}}", current_stamp - (lines - read_stamp), temp_out, temp_in, hum_out, hum_in, weight, sound);
             post_line(data, topic, tb_client);
         }
         
         fclose(f);
-        unlink(f);
+        unlink(path);
     }
 
     return;

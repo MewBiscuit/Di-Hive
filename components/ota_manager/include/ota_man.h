@@ -16,7 +16,7 @@
 #endif
 
 #define OTA_URL_SIZE 256
-#define CONFIG_FIRMWARE_UPGRADE_URL "myurl_here"
+#define CONFIG_FIRMWARE_UPGRADE_URL "http://192.168.43.229:8080/api/v1/4IdMOqwMILd426ebULui/firmware?title=DiCoreFW&version=0.5.0.0"
 #define CONFIG_OTA_RECV_TIMEOUT 10000
 
 static const char* OTA_TAG = "ota_manager";

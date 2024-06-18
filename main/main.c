@@ -12,6 +12,7 @@
 
 //Standard libraries
 #include "esp_sleep.h"
+#include "esp_netif_sntp.h"
 
 //Logs
 #define TAG "MAIN"
@@ -76,7 +77,7 @@ void turnoff_system(SSD1306_t *dev, int line) {
 }
 
 void app_main() {
-    int i, num_err = 0;
+    int i, num_err = 0, num_saved_lines = 0;
     float sound = 0, temp_in = 0, temp_out = 0, hum_in = 0, hum_out = 0, weight = 0;
     time_t stamp = 0;
     esp_err_t err = ESP_OK;
@@ -85,6 +86,9 @@ void app_main() {
     int32_t raw_data;
     char data[data_size];
     SSD1306_t ssd1306;
+    esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
+    
+    esp_netif_sntp_init(&config);
 
     i2c_master_init(&ssd1306, 32, 33, CONFIG_RESET_GPIO);
 	ssd1306_init(&ssd1306, 128, 64);
@@ -180,6 +184,7 @@ void app_main() {
                     time(&stamp);
                     snprintf(data, data_size, "{'ts':%lld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f, 'weight':%f, 'sound':%f}}", stamp, temp_out, temp_in, hum_out, hum_in, weight, sound);
                     write_data(file_data, data);
+                    num_saved_lines++;
                 }
                 vTaskDelay(30000 / portTICK_PERIOD_MS);
                 is_provisioned(&provisioned);
@@ -191,7 +196,7 @@ void app_main() {
         }
 
         //Dump local data to server and clear SD card (except credentials)
-        dump_data(file_data, TOPIC, tb_client);
+        dump_data(file_data, TOPIC, tb_client, num_saved_lines);
 
         //Read and send data
         SHT40_read(I2C_NUM_0, &temp_in, &hum_in);

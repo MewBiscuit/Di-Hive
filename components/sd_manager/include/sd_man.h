@@ -9,6 +9,7 @@
 #include "sdmmc_cmd.h"
 #include "mqtt_man.h"
 #include "esp_log.h"
+#include "esp_netif_sntp.h"
 
 #define PIN_NUM_MISO  GPIO_NUM_2
 #define PIN_NUM_MOSI  GPIO_NUM_15
@@ -23,6 +24,6 @@ void write_data(char* path, char* data);
 
 void read_sd_creds(bool* saved, char* ssid, char* password);
 
-void dump_data(char* path, char* topic, esp_mqtt_client_handle_t tb_client);
+void dump_data(char* path, char* topic, esp_mqtt_client_handle_t tb_clien, int lines);
 
 #endif
