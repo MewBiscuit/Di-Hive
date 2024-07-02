@@ -27,7 +27,7 @@ esp_err_t i2c_setup(i2c_port_t port, i2c_mode_t mode, gpio_num_t scl, gpio_num_t
     return err;
 }
 
-esp_err_t mic_setup(Microphone mic_type) {
+esp_err_t mic_setup(Microphone mic_type, gpio_num_t bck, gpio_num_t ws, gpio_num_t sd) {
     esp_err_t err = ESP_OK;
     if(err != ESP_OK) {
         ESP_LOGE(SENSORS_TAG, "Error creating I2S channel: %s",  esp_err_to_name(err));
@@ -40,12 +40,12 @@ esp_err_t mic_setup(Microphone mic_type) {
               i2s_config_t i2s_config = {
                 .mode = I2S_MODE_MASTER | I2S_MODE_RX,
                 .sample_rate = 44100,
-                .bits_per_sample = I2S_BITS_PER_SAMPLE_24BIT,
+                .bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,
                 .channel_format = I2S_CHANNEL_FMT_ONLY_LEFT,
                 .communication_format = I2S_COMM_FORMAT_STAND_I2S,
                 .intr_alloc_flags = 0,
                 .dma_buf_count = 8,
-                .dma_buf_len = bufferLen,
+                .dma_buf_len = MIC_SAMPLES,
                 .use_apll = false
               };
 
@@ -56,10 +56,10 @@ esp_err_t mic_setup(Microphone mic_type) {
             }
 
             i2s_pin_config_t pin_config = {
-                .bck_io_num = GPIO_NUM_4,
-                .ws_io_num = GPIO_NUM_5,
+                .bck_io_num = bck,
+                .ws_io_num = ws,
                 .data_out_num = -1,
-                .data_in_num = GPIO_NUM_19
+                .data_in_num = sd
             };
 
             i2s_set_pin(I2S_NUM_0, &pin_config);
@@ -77,14 +77,14 @@ esp_err_t mic_setup(Microphone mic_type) {
     return err;
 }
 
-esp_err_t read_audio(float* noise) {
+esp_err_t read_audio(float* input) {
     esp_err_t err = ESP_OK;
-    int32_t sBuffer[bufferLen];
+    int32_t sBuffer[MIC_SAMPLES];
     size_t bytesIn;
     int32_t i, samples_read;
 
-    *noise = 0;
-    err = i2s_read(I2S_NUM_0, &sBuffer, bufferLen, &bytesIn, portMAX_DELAY);
+    *input = 0;
+    err = i2s_read(I2S_NUM_0, &sBuffer, MIC_SAMPLES, &bytesIn, 3000 / portTICK_PERIOD_MS);
     if(err != ESP_OK) {
         ESP_LOGE(SENSORS_TAG, "Error reading I2S data: %s",  esp_err_to_name(err));
         return err;
@@ -92,13 +92,12 @@ esp_err_t read_audio(float* noise) {
 
     samples_read = bytesIn / sizeof(int32_t);
 
-    //RMS for dB measuring
     for(i = 0; i < samples_read; ++i){
-        *noise += pow(sBuffer[i], 2);
+        *input += pow(sBuffer[i], 2);
     }
 
-    *noise /= samples_read;
-    *noise = sqrt(*noise);
+    *input /= samples_read;
+    *input = sqrt(*input);
 
     return err;
 }
@@ -138,16 +137,16 @@ esp_err_t HX711_init(hx711_t *sensor) {
     return hx711_init(sensor);
 }
 
-esp_err_t HX711_read(hx711_t *sensor, float *weight, int32_t *raw_data) {
+esp_err_t HX711_read(hx711_t *sensor, float *weight) {
     esp_err_t err;
 
     if(hx711_wait(sensor, 5000) == ESP_OK) {
-        err = hx711_read_data(sensor, raw_data);
+        err = hx711_read_data(sensor, weight);
         if(err != ESP_OK) {
             return err;
         }
 
-        *raw_data += 120000;
+        *weight += TARE;
 
         return ESP_OK;
     }

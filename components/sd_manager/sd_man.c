@@ -79,26 +79,34 @@ void write_data(char* path, char* data) {
     return;
 }
 
-void dump_data(char* path, char* topic, esp_mqtt_client_handle_t tb_client, int lines) {
+void dump_data(char* path, char* topic, esp_mqtt_client_handle_t tb_client, int numlines, int offset, bool time_set) {
     FILE *f;
-    const uint_fast8_t data_size = 256;
+    const uint_fast8_t data_size = 512;
     char data[data_size];
     struct stat st;
     float sound = 0, temp_in = 0, temp_out = 0, hum_in = 0, hum_out = 0, weight = 0;
     time_t current_stamp = 0, read_stamp = 0;
-    
-    if (esp_netif_sntp_sync_wait(pdMS_TO_TICKS(15000)) != ESP_OK) {
-        ESP_LOGE(SD_TAG, "Failed to update system time within 10s timeout");
-    }
-
-    time(&current_stamp);
 
     if(stat(path, &st) == 0) {//If file exists
         f = fopen(path, "r");
-        while (fscanf(f, "{'ts':%lld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f, 'weight':%f, 'sound':%f}}", &read_stamp, &temp_out, &temp_in, &hum_out, &hum_in, &weight, &sound)) {
-            snprintf(data, data_size, "{'ts':%lld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f, 'weight':%f, 'sound':%f}}", current_stamp - (lines - read_stamp), temp_out, temp_in, hum_out, hum_in, weight, sound);
-            post_line(data, topic, tb_client);
+        if(time_set){
+            while (fscanf(f, "{'ts':%lld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f, 'weight':%f, 'sound':%f}}", &read_stamp, &temp_out, &temp_in, &hum_out, &hum_in, &weight, &sound)) {
+                snprintf(data, data_size, "{'ts':%lld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f, 'weight':%f, 'sound':%f}}", read_stamp, temp_out, temp_in, hum_out, hum_in, weight, sound);
+                post_line(data, topic, tb_client);
+                vTaskDelay(200 / portTICK_PERIOD_MS);
+            }
         }
+
+        else{
+            while (fscanf(f, "{'ts':%lld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f, 'weight':%f, 'sound':%f}}", &read_stamp, &temp_out, &temp_in, &hum_out, &hum_in, &weight, &sound)) {
+                read_stamp = current_stamp - (numlines * offset);
+                numlines--;
+                snprintf(data, data_size, "{'ts':%lld, 'values':{'temperature_out':%f, 'temperature_in':%f, 'humidity_out':%f, 'humidity_in':%f, 'weight':%f, 'sound':%f}}", read_stamp, temp_out, temp_in, hum_out, hum_in, weight, sound);
+                post_line(data, topic, tb_client);
+                vTaskDelay(200 / portTICK_PERIOD_MS);
+            }
+        }
+
         
         fclose(f);
         unlink(path);

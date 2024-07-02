@@ -22,7 +22,7 @@
 static const char* OTA_TAG = "ota_manager";
 
 /**
-* @brief Check for any OTA updates, and if found, updates the Di-Core
+* @brief Check for any OTA updates, and if found, updates the ESP32
 * 
 * @return esp_err_t
 */

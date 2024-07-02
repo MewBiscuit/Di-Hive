@@ -10,7 +10,7 @@ static const char* NVS_TAG = "nvs_manager";
 /**
     * @brief Initialize the default NVS partition.
     * 
-    * @return void
+    * @return Error code
 */
 esp_err_t init_nvs();
 
@@ -20,7 +20,7 @@ esp_err_t init_nvs();
     * @param key The key to read from NVS.
     * @param value The value to read from NVS.
     * 
-    * @return esp_err_t
+    * @return Error code
 */
 esp_err_t read_string_from_nvs(char *key, char *value);
 
@@ -30,7 +30,7 @@ esp_err_t read_string_from_nvs(char *key, char *value);
     * @param key The key to write to NVS.
     * @param value The value to write to NVS.
     * 
-    * @return esp_err_t
+    * @return Error code
 */
 esp_err_t write_string_to_nvs(char *key, char *value);
 #endif

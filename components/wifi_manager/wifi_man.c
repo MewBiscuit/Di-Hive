@@ -70,8 +70,10 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
             ESP_LOGI(WIFI_TAG, "Retrying to connect to AP");
         }
 
-        else
+        else {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+            connected = false;
+        }
 
         ESP_LOGI(WIFI_TAG, "Connection to the AP fail");
     }

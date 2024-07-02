@@ -18,7 +18,6 @@
 #include "esp_system.h"
 #include "sd_man.h"
 
-
 #include <wifi_provisioning/manager.h>
 #include <wifi_provisioning/scheme_softap.h>
 
@@ -75,7 +74,7 @@ esp_err_t is_provisioned(bool* provisioned);
 esp_err_t setup_ap(char *ssid, char *password, int *channel, int *max_connections);
 
 /**
- * @brief Checks if Di_Core is connected
+ * @brief Checks if ESP is connected
  *
  * @return False if disconnected, True if connected
  */

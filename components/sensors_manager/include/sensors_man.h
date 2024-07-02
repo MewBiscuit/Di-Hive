@@ -21,9 +21,8 @@
 #define I2C_MASTER_TX_BUF_DISABLE 0
 #define I2C_MASTER_RX_BUF_DISABLE 0
 #define I2C_MASTER_TIMEOUT_MS 1000
-#define SAMPLE_SIZE 6000
 #define TARE 1
-#define bufferLen 64
+#define MIC_SAMPLES 512
 
 #define SENSORS_TAG "SENSORS_MANAGER"
 
@@ -44,34 +43,26 @@ typedef enum {
 */
 esp_err_t i2c_setup(i2c_port_t port, i2c_mode_t mode, gpio_num_t scl, gpio_num_t sda, uint32_t clk_freq);
 
-void i2c_scanner();
-
 /**
  * @brief Set up microphone, including I2S protocol and specific hardware
  * 
  * @param mic_type Microphone hardware being used
+ * @param bck Bitclock line GPIO
+ * @param ws Word select line GPIO
+ * @param sd Data input line GPIO
  * 
  * @return esp_err_t Error code
 */
-esp_err_t mic_setup(Microphone mic_type);
+esp_err_t mic_setup(Microphone mic_type, gpio_num_t bck, gpio_num_t ws, gpio_num_t sd);
 
 /**
- * @brief Reads the current noise level
+ * @brief Read audio samples from microphone and calculates RMS value
  * 
- * @param noise RMS of sound from read samples
- * 
- * @return esp_err_t Error code
-*/
-esp_err_t read_audio(float* noise);
-
-/**
- * @brief Future function intended for recording audio samples of hives for post analysis and model training
- * 
- * @param noise Average of sound from read samples
+ * @param input RMS of sound from read samples
  * 
  * @return esp_err_t Error code
 */
-//esp_err_t record_sample(i2s_chan_handle_t* rx_handle);
+esp_err_t read_audio(float* input);
 
 /**
  * @brief Read values from SHT40 sensor
@@ -100,6 +91,6 @@ esp_err_t HX711_init(hx711_t *sensor);
  * 
  * @return esp_err_t Error code
 */
-esp_err_t HX711_read(hx711_t *sensor, float* weight, int32_t *raw_data);
+esp_err_t HX711_read(hx711_t *sensor, float* weight);
 
 #endif

@@ -18,12 +18,45 @@
 
 #define SD_TAG "sd_manager"
 
+/**
+ * @brief Initialize SD module and card
+ * 
+ * @return esp_err_t Error code
+*/
 esp_err_t init_sd();
 
+/**
+ * @brief Append specified data to specified file
+ * 
+ * @param path String containing path to file
+ * @param data String containing data to be written
+ * 
+ * @return void
+*/
 void write_data(char* path, char* data);
 
+/**
+ * @brief Checks for saved credentials on SD card, and reads them if found
+ * 
+ * @param saved True if file exists, false otherwise
+ * @param ssid String where SSID will be saved if found
+ * @param password String where password will be saved if found
+ * 
+ * @return void
+*/
 void read_sd_creds(bool* saved, char* ssid, char* password);
 
-void dump_data(char* path, char* topic, esp_mqtt_client_handle_t tb_clien, int lines);
-
+/**
+ * @brief Dumps data from specified file to specified mqtt client
+ * 
+ * @param path String containing path to file
+ * @param topic String containing topic to which to publish data
+ * @param tb_client Struct for mqtt client
+ * @param numlines Number of lines written to file for internal timestamp sync
+ * @param offset Number of offset for internal timestamp synchronization
+ * @param time_set Flag for whether timestamp is correct
+ * 
+ * @return void
+*/
+void dump_data(char* path, char* topic, esp_mqtt_client_handle_t tb_client, int numlines, int offset, bool time_set);
 #endif
